@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./config.js"></script>
+<title>Forza Helper · FH6 Car Database</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0b0c; --panel:#0d0e0f; --input:#101112; --thead:#121314; --hover:#15171a; --badge:#17191b;
+    --headerBg:rgba(10,11,12,0.92); --stripe:rgba(255,255,255,0.015);
+    --l1:rgba(255,255,255,0.07); --l2:rgba(255,255,255,0.11); --l3:rgba(255,255,255,0.17); --l4:rgba(255,255,255,0.38);
+    --ink:#f2f0ed; --text:#e9e7e4; --soft:#c8bfb8; --muted:#a9a29a; --dim:#8a8177; --dim2:#7d756c;
+    --faint:#6f675f; --faint2:#5f5850; --disabled:#4d4741;
+    --accent:#e8622a; --accentHi:#ff7a41; --accentSoft:#f0b79c; --onAccent:#120a06;
+    --warn:#e8c17a; --ok:#8fd6a4; --ph1:#111213; --ph2:#151719;
+  }
+  [data-theme="light"] {
+    --bg:#f6f5f2; --panel:#ffffff; --input:#ffffff; --thead:#efedea; --hover:#f1efeb; --badge:#f3f1ee;
+    --headerBg:rgba(246,245,242,0.94); --stripe:rgba(0,0,0,0.02);
+    --l1:rgba(0,0,0,0.08); --l2:rgba(0,0,0,0.13); --l3:rgba(0,0,0,0.2); --l4:rgba(0,0,0,0.42);
+    --ink:#111213; --text:#1e2022; --soft:#4a453f; --muted:#5c564f; --dim:#736b62; --dim2:#8a8177;
+    --faint:#9a9187; --faint2:#a8a096; --disabled:#c2bbb3;
+    --accent:#c74a16; --accentHi:#e8622a; --accentSoft:#8a3a12; --onAccent:#fffaf6;
+    --warn:#8a6410; --ok:#276b3d; --ph1:#eceae6; --ph2:#e3e0db;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); }
+  html { scroll-padding-top: 60px; }
+  * { box-sizing: border-box; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { color:var(--accentHi); }
+  input, select, button { font-family: inherit; }
+  ::selection { background:var(--accent); color:var(--bg); }
+  table { border-collapse: collapse; }
+  input[type=checkbox] { accent-color:#e8622a; }
+  input[type=range].fh6r { -webkit-appearance:none; appearance:none; background:transparent; }
+  input[type=range].fh6r::-webkit-slider-runnable-track { height:24px; background:transparent; border:0; }
+  input[type=range].fh6r::-webkit-slider-thumb { -webkit-appearance:none; pointer-events:auto; width:14px; height:14px; margin-top:5px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); cursor:grab; }
+  input[type=range].fh6r::-moz-range-track { height:24px; background:transparent; border:0; }
+  input[type=range].fh6r::-moz-range-thumb { pointer-events:auto; width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); cursor:grab; }
+  input[type=range].fh6r:focus-visible::-webkit-slider-thumb { outline:2px solid var(--accentHi); }
+  @keyframes fh6in { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+  @keyframes fh6rise { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform:none; } }
+  @keyframes fh6row { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform:none; } }
+  @keyframes fh6bob { 0%,100% { transform: translateY(0); opacity:.75; } 50% { transform: translateY(5px); opacity:1; } }
+  @keyframes fh6pulse { 0% { opacity:.35; } 50% { opacity:1; } 100% { opacity:.35; } }
+  button, select, a, tr, input { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease; }
+  button:active { transform: translateY(1px); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; } }
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--text);font-family:Archivo,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased">
+
+  <header style="position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding:8px 20px;min-height:60px;background:var(--headerBg);backdrop-filter:blur(10px);border-bottom:1px solid var(--l2)">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <div style="width:22px;height:22px;background:var(--accent);transform:skewX(-12deg)"></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap">Forza Helper</div>
+    </div>
+    <nav style="display:flex;gap:2px;flex:0 1 auto;min-width:0;white-space:nowrap">
+      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="4">
+        <button onClick="{{ item.go }}" style="{{ item.style }}" style-hover="color:var(--ink)">{{ item.label }}</button>
+      </sc-for>
+    </nav>
+    <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex:0 0 auto">
+      <div style="display:flex;flex:0 0 auto;border:1px solid var(--l3)" role="group" aria-label="Measurement units">
+        <sc-for list="{{ unitOptions }}" as="u" hint-placeholder-count="2">
+          <button onClick="{{ u.onClick }}" style="{{ u.style }}">{{ u.label }}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{ toggleTheme }}" aria-label="Toggle colour theme" style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--l3);color:var(--soft);font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--ink)">{{ themeGlyph }}</button>
+      <button onClick="{{ goCompare }}" style="display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap;padding:7px 12px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;letter-spacing:0.04em;cursor:pointer" style-hover="border-color:var(--accent)">
+        Compare
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent)">{{ compareCount }}</span>
+      </button>
+      <button onClick="{{ goChat }}" style="flex:0 0 auto;white-space:nowrap;padding:8px 14px;background:var(--accent);border:1px solid var(--accent);color:var(--onAccent);font-size:12px;font-weight:600;letter-spacing:0.04em;cursor:pointer" style-hover="background:var(--accentHi)">Car Finder</button>
+    </div>
+  </header>
+
+  <sc-if value="{{ isExplorer }}" hint-placeholder-val="{{ true }}">
+    <main style="max-width:1560px;margin:0 auto;padding:0 20px 80px">
+
+      <section id="fh6-hero" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:calc(100vh - 60px);padding:60px 0 72px;border-bottom:1px solid var(--l1)">
+        <div style="max-width:900px;width:100%">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);margin-bottom:22px;animation:fh6rise .55s cubic-bezier(.2,.7,.3,1) both">Forza Horizon 6 · Car intelligence</div>
+          <h1 style="margin:0;font-size:clamp(42px,6.6vw,92px);line-height:0.94;font-weight:700;letter-spacing:-0.03em;text-wrap:balance;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .07s both">Every car, every stat,<br>one query away.</h1>
+          <p style="margin:26px auto 0;max-width:56ch;color:var(--muted);font-size:17px;text-wrap:pretty;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .16s both">Filter the roster on stock specifications, compare candidates side by side, or describe what you want in plain language and let the Car Finder translate it into constraints.</p>
+          <div style="display:flex;gap:0;margin:38px auto 0;max-width:720px;border:1px solid var(--l3);background:var(--input);animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .25s both">
+            <input value="{{ searchText }}" onChange="{{ onSearchInput }}" onKeyDown="{{ onSearchKey }}" placeholder="e.g. AWD cars around 500 hp under 100k" style="flex:1;min-width:0;padding:18px 20px;background:transparent;border:0;color:var(--text);font-size:16px;outline:none" />
+            <button onClick="{{ runSearch }}" style="padding:0 26px;background:var(--accent);border:0;color:var(--onAccent);font-size:14px;font-weight:600;letter-spacing:0.04em;cursor:pointer;white-space:nowrap" style-hover="background:var(--accentHi)">Find a car</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:14px auto 0;max-width:720px;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .34s both">
+            <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="4">
+              <button onClick="{{ ex.go }}" style="padding:5px 10px;background:transparent;border:1px dashed var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer" style-hover="color:var(--text);border-color:var(--l4)">{{ ex.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="margin-top:auto;padding-top:56px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--faint2);animation:fh6bob 2.4s ease-in-out 1s infinite">Scroll for the full roster ↓</div>
+      </section>
+
+      <div style="min-height:calc(100vh - 60px);display:flex;flex-direction:column">
+      <section style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;padding:20px 0">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px;padding:0 14px;background:var(--input);border:1px solid var(--l3)">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--faint2)">⌕</span>
+          <input value="{{ tableQuery }}" onChange="{{ onTableQuery }}" onKeyDown="{{ onTableQueryKey }}" placeholder="Search make, model or car type" style="flex:1;min-width:0;padding:11px 0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none" />
+          <sc-if value="{{ hasTableQuery }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ clearTableQuery }}" aria-label="Clear search" style="background:transparent;border:0;color:var(--dim);font-size:14px;cursor:pointer;padding:0" style-hover="color:var(--ink)">×</button>
+          </sc-if>
+        </div>
+        <button onClick="{{ toggleFilters }}" style="{{ filterBtnStyle }}" style-hover="border-color:var(--l4);color:var(--ink)">
+          Filters
+          <sc-if value="{{ hasFilterCount }}" hint-placeholder-val="{{ false }}">
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;background:var(--accent);color:var(--onAccent);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600">{{ filterCount }}</span>
+          </sc-if>
+          <span style="{{ filterCaretStyle }}">▾</span>
+        </button>
+        <button onClick="{{ toggleColumns }}" style="padding:0 14px;background:transparent;border:1px solid var(--l3);color:var(--muted);font-size:13px;cursor:pointer" style-hover="color:var(--ink);border-color:var(--l4)">Columns</button>
+        <button onClick="{{ resetFilters }}" style="padding:0 14px;background:transparent;border:1px solid var(--l3);color:var(--muted);font-size:13px;cursor:pointer" style-hover="color:var(--ink);border-color:var(--l4)">Reset</button>
+      </section>
+
+      <sc-if value="{{ filtersOpen }}" hint-placeholder-val="{{ false }}">
+        <section style="padding:20px;margin-bottom:14px;background:var(--panel);border:1px solid var(--l2);animation:fh6rise .28s cubic-bezier(.2,.8,.3,1) both">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+            <sc-for list="{{ selectFilters }}" as="f" hint-placeholder-count="7">
+              <label style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ f.label }}</span>
+                <select value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;padding:9px 10px;background:var(--input);border:1px solid var(--l3);color:var(--text);font-size:13px;outline:none">
+                  <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3">
+                    <option value="{{ o.value }}">{{ o.label }}</option>
+                  </sc-for>
+                </select>
+              </label>
+            </sc-for>
+          </div>
+          <div style="height:1px;background:var(--l1);margin:20px 0"></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px 28px">
+            <sc-for list="{{ sliderFilters }}" as="sl" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ sl.label }}</span>
+                  <span style="{{ sl.readoutStyle }}">{{ sl.readout }}</span>
+                </div>
+                <div style="position:relative;height:24px">
+                  <div style="position:absolute;top:11px;left:0;right:0;height:2px;background:var(--l3)"></div>
+                  <div style="{{ sl.fillStyle }}"></div>
+                  <input type="range" class="fh6r" min="{{ sl.lo }}" max="{{ sl.hi }}" step="{{ sl.step }}" value="{{ sl.vMin }}" onChange="{{ sl.onMin }}" disabled="{{ sl.disabled }}" aria-label="{{ sl.minAria }}" style="{{ sl.minStyle }}" />
+                  <input type="range" class="fh6r" min="{{ sl.lo }}" max="{{ sl.hi }}" step="{{ sl.step }}" value="{{ sl.vMax }}" onChange="{{ sl.onMax }}" disabled="{{ sl.disabled }}" aria-label="{{ sl.maxAria }}" style="{{ sl.maxStyle }}" />
+                </div>
+                <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint2)">
+                  <span>{{ sl.loLabel }}</span>
+                  <span>{{ sl.hiLabel }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ columnsOpen }}" hint-placeholder-val="{{ false }}">
+        <section style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px;margin-bottom:14px;background:var(--input);border:1px solid var(--l2)">
+          <sc-for list="{{ allColumns }}" as="c" hint-placeholder-count="8">
+            <button onClick="{{ c.toggle }}" style="{{ c.style }}">{{ c.label }}</button>
+          </sc-for>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ chipsVisible }}" hint-placeholder-val="{{ false }}">
+        <section style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px">
+          <sc-for list="{{ activeChips }}" as="chip" hint-placeholder-count="2">
+            <button onClick="{{ chip.clear }}" style="animation:fh6in .22s ease both;display:flex;align-items:center;gap:8px;padding:5px 9px;background:rgba(232,98,42,0.12);border:1px solid rgba(232,98,42,0.4);color:var(--accentSoft);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer">{{ chip.label }} <span style="color:var(--accent)">×</span></button>
+          </sc-for>
+        </section>
+      </sc-if>
+
+      <section style="display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;padding-bottom:10px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)">{{ resultSummary }}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--faint2)">*Stock values only</div>
+      </section>
+
+      <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">Running query against Postgres…</div>
+      </sc-if>
+
+      <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--l2);background:var(--panel);overflow-x:auto">
+          <table style="width:100%;min-width:900px;font-size:13px">
+            <caption style="text-align:left;padding:0;height:0;overflow:hidden;position:absolute;clip:rect(0 0 0 0)">Forza Horizon 6 cars, stock specifications</caption>
+            <thead>
+              <tr style="background:var(--thead)">
+                <th scope="col" style="width:38px;padding:11px 12px;border-bottom:1px solid var(--l2)"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim2)">CMP</span></th>
+                <sc-for list="{{ columns }}" as="col" hint-placeholder-count="8">
+                  <th scope="col" onClick="{{ col.onSort }}" style="{{ col.style }}" style-hover="color:var(--ink)">{{ col.label }}{{ col.arrow }}</th>
+                </sc-for>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ rows }}" as="row" hint-placeholder-count="8">
+                <tr onClick="{{ row.open }}" style="{{ row.style }}" style-hover="background:var(--hover)">
+                  <td style="{{ row.cellPad }}"><input type="checkbox" checked="{{ row.selected }}" onChange="{{ row.toggle }}" onClick="{{ row.stop }}" aria-label="Add to compare" style="cursor:pointer" /></td>
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="8">
+                    <td style="{{ cell.tdStyle }}"><span style="{{ cell.spanStyle }}">{{ cell.text }}</span></td>
+                  </sc-for>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding:16px 0">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim2)">{{ pageLabel }}</div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ prevPage }}" style="{{ prevStyle }}">Previous</button>
+            <button onClick="{{ nextPage }}" style="{{ nextStyle }}">Next</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDisconnected }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:44px;border:1px dashed var(--l3);background:var(--panel)">
+          <h2 style="margin:0 0 8px;font-size:20px;font-weight:600">{{ connTitle }}</h2>
+          <p style="margin:0;max-width:66ch;color:var(--muted);text-wrap:pretty">{{ connBody }}</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel)">
+          <h2 style="margin:0 0 8px;font-size:20px;font-weight:600">No exact matches</h2>
+          <p style="margin:0 0 6px;color:var(--muted);max-width:62ch">The query returned zero rows — nothing in the database satisfies every constraint at the same time. Constraints were not relaxed automatically.</p>
+          <p style="margin:0 0 22px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accentSoft)">Most restrictive constraint: {{ bottleneck }}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <sc-for list="{{ relaxOptions }}" as="r" hint-placeholder-count="3">
+              <button onClick="{{ r.apply }}" style="padding:9px 13px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--ink)">{{ r.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:1360px;margin:0 auto;padding:32px 20px 90px">
+      <button onClick="{{ goExplorer }}" style="padding:0;background:transparent;border:0;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--accent)">← Back to explorer</button>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:34px;margin-top:22px">
+        <div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.5fr);gap:34px;align-items:start">
+          <div>
+            <div style="aspect-ratio:16/10;border:1px solid var(--l2);background:repeating-linear-gradient(115deg,var(--ph1) 0 12px,var(--ph2) 12px 24px);display:flex;align-items:flex-end;padding:14px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--faint)">car render — 16:10, lazy-loaded</span>
+            </div>
+            <div style="margin-top:16px;border:1px solid var(--l2);background:var(--panel);padding:16px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Provenance</div>
+              <sc-for list="{{ detailProvenance }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-top:1px solid var(--l1);font-size:12px">
+                  <span style="color:var(--dim)">{{ p.label }}</span>
+                  <span style="{{ p.style }}">{{ p.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)">{{ detailYear }}</span>
+              <span style="{{ detailClassStyle }}">{{ detailClassLabel }}</span>
+              <span style="padding:3px 8px;background:var(--badge);border:1px solid var(--l3);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--soft)">{{ detailDrivetrain }}</span>
+            </div>
+            <h1 style="margin:10px 0 0;font-size:clamp(28px,3.6vw,46px);line-height:1.02;font-weight:700;letter-spacing:-0.02em">{{ detailName }}</h1>
+            <div style="display:flex;flex-wrap:wrap;gap:28px;margin:26px 0 30px;padding:20px;border:1px solid var(--l2);background:var(--panel)">
+              <sc-for list="{{ detailHeadline }}" as="h" hint-placeholder-count="4">
+                <div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ h.label }}</div>
+                  <div style="{{ h.style }}">{{ h.value }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)">Stock specifications</span>
+              <span style="flex:1;height:1px;background:var(--l2)"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)">upgrades excluded</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 24px">
+              <sc-for list="{{ detailSpecs }}" as="s" hint-placeholder-count="12">
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--l1)">
+                  <span style="color:var(--dim);font-size:13px">{{ s.label }}</span>
+                  <span style="{{ s.style }}">{{ s.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:28px">
+              <button onClick="{{ detailToggleCompare }}" style="padding:11px 16px;background:var(--accent);border:0;color:var(--onAccent);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--accentHi)">{{ detailCompareLabel }}</button>
+              <button onClick="{{ goChat }}" style="padding:11px 16px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:13px;cursor:pointer" style-hover="border-color:var(--l4)">Find similar with Car Finder</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isCompare }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:1560px;margin:0 auto;padding:40px 20px 90px">
+      <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Compare</h1>
+      <p style="margin:10px 0 26px;color:var(--muted);max-width:62ch">Differences are marked, not ranked — the highest figure in a row is not necessarily the better car for your event, surface, or class target.</p>
+      <sc-if value="{{ hasCompare }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow-x:auto;border:1px solid var(--l2);background:var(--panel)">
+          <table style="width:100%;min-width:760px;font-size:13px">
+            <thead>
+              <tr style="background:var(--thead)">
+                <th scope="col" style="text-align:left;padding:14px;border-bottom:1px solid var(--l2);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2);position:sticky;left:0;background:var(--thead)">Attribute</th>
+                <sc-for list="{{ compareCars }}" as="c" hint-placeholder-count="3">
+                  <th scope="col" style="text-align:left;padding:14px;border-bottom:1px solid var(--l2);border-left:1px solid var(--l1);vertical-align:top">
+                    <div style="font-size:14px;font-weight:600;line-height:1.2">{{ c.name }}</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:4px">{{ c.sub }}</div>
+                    <button onClick="{{ c.remove }}" style="margin-top:8px;padding:3px 7px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">Remove</button>
+                  </th>
+                </sc-for>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ compareRows }}" as="row" hint-placeholder-count="10">
+                <tr style="{{ row.style }}">
+                  <th scope="row" style="{{ row.labelStyle }}">{{ row.label }}</th>
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="3">
+                    <td style="{{ cell.tdStyle }}"><span style="{{ cell.spanStyle }}">{{ cell.text }}</span><span style="{{ cell.markStyle }}">{{ cell.mark }}</span></td>
+                  </sc-for>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+      <sc-if value="{{ noCompare }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:40px;border:1px dashed var(--l3);background:var(--panel)">
+          <p style="margin:0 0 18px;color:var(--muted)">No cars selected. Tick the compare box on any row in the explorer, or add a car from its detail page.</p>
+          <button onClick="{{ goExplorer }}" style="padding:10px 15px;background:var(--accent);border:0;color:var(--onAccent);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--accentHi)">Open explorer</button>
+        </div>
+      </sc-if>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:1180px;margin:0 auto;padding:40px 20px 120px">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between">
+        <div>
+          <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Car Finder</h1>
+          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">Describe the car you want. Your request is turned into a parameterised SQL query, run read-only against the Postgres database, and the returned rows are shown in full — the query is always visible, and results are never summarised away.</p>
+        </div>
+        <button onClick="{{ clearChat }}" style="padding:8px 12px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-size:12px;cursor:pointer" style-hover="color:var(--ink)">Clear session</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:22px;margin:30px 0">
+        <sc-for list="{{ messages }}" as="msg" hint-placeholder-count="2">
+          <div style="{{ msg.wrapStyle }}">
+            <sc-if value="{{ msg.isUser }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2);padding-top:3px">You</span>
+                <span style="font-size:15px;color:var(--text)">{{ msg.text }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ msg.isResult }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:18px;border:1px solid var(--l2);background:var(--panel)">
+                  <div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Your filters</div>
+                    <sc-for list="{{ msg.filters }}" as="f" hint-placeholder-count="4">
+                      <div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--l1);font-size:13px">
+                        <span style="color:var(--dim)">{{ f.label }}</span>
+                        <span style="font-family:'IBM Plex Mono',monospace;color:var(--text)">{{ f.value }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div>
+                    <button onClick="{{ msg.editFilters }}" style="padding:6px 10px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent)">Correct in explorer filters</button>
+                  </div>
+                </div>
+
+                <div style="margin-top:14px;border:1px solid var(--l2);background:var(--input)">
+                  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--l2)">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2)">Generated SQL</span>
+                    <span style="{{ msg.statusStyle }}">{{ msg.statusLabel }}</span>
+                    <button onClick="{{ msg.copySql }}" style="margin-left:auto;padding:4px 9px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">{{ msg.copyLabel }}</button>
+                    <button onClick="{{ msg.rerun }}" style="padding:4px 9px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">Re-run</button>
+                  </div>
+                  <pre style="margin:0;padding:14px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6;color:var(--soft);white-space:pre">{{ msg.sql }}</pre>
+                </div>
+
+                <sc-if value="{{ msg.isFailed }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;padding:20px;border:1px solid var(--l3);background:var(--panel)">
+                    <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ msg.failTitle }}</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);white-space:pre-wrap">{{ msg.failDetail }}</div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ msg.hasMatches }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--soft)">Matches</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim2)">{{ msg.matchCount }}</span>
+                    </div>
+                    <div style="overflow-x:auto;border:1px solid var(--l2);background:var(--panel)">
+                      <table style="width:100%;min-width:820px;font-size:13px">
+                        <thead>
+                          <tr style="background:var(--thead)">
+                            <sc-for list="{{ chatColumns }}" as="col" hint-placeholder-count="8">
+                              <th scope="col" style="{{ col.style }}">{{ col.label }}</th>
+                            </sc-for>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <sc-for list="{{ msg.matches }}" as="row" hint-placeholder-count="3">
+                            <tr onClick="{{ row.open }}" style="cursor:pointer;border-top:1px solid var(--l1)" style-hover="background:var(--hover)">
+                              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="8">
+                                <td style="{{ cell.tdStyle }}"><span style="{{ cell.spanStyle }}">{{ cell.text }}</span></td>
+                              </sc-for>
+                            </tr>
+                          </sc-for>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                      <sc-for list="{{ msg.reasons }}" as="r" hint-placeholder-count="3">
+                        <div style="display:flex;gap:10px;font-size:12px;color:var(--dim)">
+                          <span style="font-family:'IBM Plex Mono',monospace;color:var(--soft);min-width:180px">{{ r.car }}</span>
+                          <span>{{ r.why }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ msg.isEmpty }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;padding:22px;border:1px solid rgba(232,98,42,0.3);background:var(--badge)">
+                    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Query returned zero rows</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accentSoft);margin-bottom:16px">Most restrictive constraint: {{ msg.bottleneck }}</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px">
+                      <sc-for list="{{ msg.relax }}" as="r" hint-placeholder-count="3">
+                        <button onClick="{{ r.apply }}" style="padding:8px 12px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent)">{{ r.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="position:sticky;bottom:24px;display:flex;border:1px solid var(--l3);background:var(--input)">
+        <input value="{{ chatDraft }}" onChange="{{ onChatInput }}" onKeyDown="{{ onChatKey }}" placeholder="I need something from 2000+, AWD stock, under 90k CR, and around 450 HP." style="flex:1;min-width:0;padding:16px 18px;background:transparent;border:0;color:var(--text);font-size:15px;outline:none" />
+        <button onClick="{{ sendChat }}" style="padding:0 24px;background:var(--accent);border:0;color:var(--onAccent);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--accentHi)">Send</button>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:900px;margin:0 auto;padding:48px 20px 100px">
+      <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">About the data</h1>
+      <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Forza Horizon 6 launched on 19 May 2026 with more than 550 cars, and the roster keeps growing through Festival Playlist, Car Pass and Aftermarket additions. Nothing in this interface assumes a fixed car count — every list is driven by the current database version.</p>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        <sc-for list="{{ trustLevels }}" as="t" hint-placeholder-count="4">
+          <div style="padding:20px;background:var(--panel);border:1px solid var(--l2)">
+            <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
+            <p style="margin:12px 0 0;font-size:13px;color:var(--muted)">{{ t.text }}</p>
+          </div>
+        </sc-for>
+      </div>
+      <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Where the data comes from</h2>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">Cars live in a Supabase Postgres database and are never bundled into this frontend. Every table, filter option, count and comparison is the result of a live query, so the interface has no opinion about how many cars exist.</p>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">The Car Finder translates a request into SQL and runs it through a read-only Postgres function via Supabase RPC. The generated query is shown with every answer, so a wrong result can be traced to a wrong constraint rather than guessed at. Filter and sort state in the explorer compiles to the same SQL, visible under “Show SQL”.</p>
+      <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft)">
+        <sc-for list="{{ dbFacts }}" as="d" hint-placeholder-count="4">
+          <div style="display:flex;gap:12px"><span style="color:var(--dim2);min-width:150px">{{ d.label }}</span><span>{{ d.value }}</span></div>
+        </sc-for>
+      </div>
+
+      <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Sources</h2>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+        <a href="https://forza.net/fh6cars" target="_blank" rel="noreferrer">Official Forza Horizon 6 car list — forza.net/fh6cars</a>
+        <a href="https://forza.net/forzahorizon6" target="_blank" rel="noreferrer">Forza Horizon 6 main page</a>
+        <a href="https://forza.net/news/forza-horizon-6-coming-may-2026" target="_blank" rel="noreferrer">Launch and features announcement</a>
+        <a href="https://forza.net/news/forza-horizon-6-car-culture" target="_blank" rel="noreferrer">Car culture and customization</a>
+      </div>
+      <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Units</h2>
+      <p style="margin:0;color:var(--muted);font-size:13px">Imperial and metric are separate columns in the database, not client-side conversions. The unit switch in the header changes which column is read for torque, weight and power-to-weight — in the table, in filters and sliders, and in sorting. Power is always in HP and value always in credits, so those never change. Weight and torque range filters reset when you switch, because their bounds belong to the other unit.</p>
+    </main>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;supabaseUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;supabaseAnonKey&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;table&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;cars&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;sqlRpc&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;run_car_query&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Table&quot;}}">
+const T_DEFAULT = "cars";
+const Q = {
+  year: '"Year"', make: '"Make"', model: '"Model"', type: '"Type"', cls: '"Class"', pi: '"PI"',
+  country: '"Country"', price: '"Value (Cr)"', rarity: '"Rarity"', hp: '"Power (HP)"',
+  tqI: '"Torque (Imperial)"', tqM: '"Torque (Metric)"', wtI: '"Weight (Imperial)"', wtM: '"Weight (Metric)"',
+  dt: '"Drivetrain"', epos: '"Engine Pos."', pwI: '"Power to Weight (Imperial)"', pwM: '"Power to Weight (Metric)"',
+  source: '"Source"'
+};
+const UNITS = {
+  imperial: {tq: {col: Q.tqI, unit: "lb-ft"}, wt: {col: Q.wtI, unit: "lb"}, pw: {col: Q.pwI, unit: "hp/lb"}},
+  metric:   {tq: {col: Q.tqM, unit: "Nm"},    wt: {col: Q.wtM, unit: "kg"}, pw: {col: Q.pwM, unit: "hp/kg"}}
+};
+const ID_SQL = "(" + Q.make + " || ' · ' || " + Q.model + " || ' · ' || coalesce(" + Q.year + "::text,''))";
+const SELECT_COLS = [
+  Q.year + " AS year", Q.make + " AS make", Q.model + " AS model", Q.type + " AS type",
+  Q.cls + " AS cls", Q.pi + " AS pi", Q.country + " AS country", Q.price + " AS price",
+  Q.rarity + " AS rarity", Q.hp + " AS hp", Q.tqI + " AS tq_i", Q.tqM + " AS tq_m",
+  Q.wtI + " AS wt_i", Q.wtM + " AS wt_m", Q.dt + " AS dt", Q.epos + " AS epos",
+  Q.pwI + " AS pw_i", Q.pwM + " AS pw_m", Q.source + " AS source", ID_SQL + " AS id"
+].join(",\n       ");
+const PAGE = 12;
+const ACCENT = "var(--accent)";
+const MONO = "'IBM Plex Mono',monospace";
+const num = (n) => n == null ? null : Number(n).toLocaleString("en-US");
+const UNK = "Unknown / Not verified";
+const esc = (v) => String(v).replace(/'/g, "''");
+const nn = (v) => v === "" || v == null ? null : Number(String(v).replace(/[^0-9.]/g, ""));
+
+const mapRow = (r) => ({
+  id: r.id, make: r.make, model: r.model, year: r.year, price: r.price, pi: r.pi, cls: r.cls,
+  type: r.type, country: r.country, rarity: r.rarity, hp: r.hp,
+  tq_i: r.tq_i, tq_m: r.tq_m, wt_i: r.wt_i, wt_m: r.wt_m, pw_i: r.pw_i, pw_m: r.pw_m,
+  dt: r.dt, epos: r.epos, source: r.source
+});
+
+const COLS = [
+  {key:"car",label:"Car",align:"left",always:true},
+  {key:"year",label:"Year",align:"right"},
+  {key:"type",label:"Type",align:"left"},
+  {key:"cls",label:"Class",align:"left"},
+  {key:"pi",label:"PI",align:"right"},
+  {key:"country",label:"Country",align:"left"},
+  {key:"price",label:"Value",align:"right"},
+  {key:"rarity",label:"Rarity",align:"left"},
+  {key:"hp",label:"Power",align:"right"},
+  {key:"tq",label:"Torque",align:"right"},
+  {key:"wt",label:"Weight",align:"right"},
+  {key:"dt",label:"Drivetrain",align:"left"},
+  {key:"epos",label:"Engine pos.",align:"left"},
+  {key:"pw",label:"Power/weight",align:"right"},
+  {key:"source",label:"Source",align:"left"}
+];
+const DEFAULT_COLS = ["car","year","type","cls","pi","price","hp","tq","wt","dt"];
+const EMPTY_F = {make:"", model:"", cls:"", piMin:"", piMax:"", dt:"", type:"", country:"", rarity:"", epos:"", yearMin:"", yearMax:"", priceMin:"", priceMax:"", hpMin:"", hpMax:"", wtMin:"", wtMax:"", tqMin:"", tqMax:"", q:""};
+const EMPTY_CAR = {id:"",make:"",model:"—",year:null,price:null,pi:null,cls:"—",hp:null,tq_i:null,tq_m:null,wt_i:null,wt_m:null,pw_i:null,pw_m:null,dt:"—",type:null,country:null,rarity:null,epos:null,source:null};
+
+class Component extends DCLogic {
+  state = {
+    view: "explorer", detailId: null, compare: [], searchText: "", chatDraft: "", messages: [],
+    columns: DEFAULT_COLS.slice(), columnsOpen: false, sortKey: "pi", sortDir: -1, page: 0,
+    rows: [], total: 0, status: "loading", errorMsg: "", sql: "", diagnosis: undefined,
+    sqlOpen: false, copied: false, theme: "dark",
+    facets: {make:[], model:[], type:[], country:[], rarity:[], epos:[], dt:[]},
+    bounds: {pi: [100, 999]}, filtersOpen: false, qDraft: "", units: "imperial",
+    f: Object.assign({}, EMPTY_F)
+  };
+
+  cache = {};
+  reqToken = 0;
+  msgId = 0;
+
+  applyBodyTheme(theme) {
+    try { document.body.style.background = theme === "light" ? "#f6f5f2" : "#0a0b0c"; document.body.style.colorScheme = theme; } catch (e) {}
+  }
+
+  componentDidMount() {
+    let theme = this.props.theme || "dark";
+    try { const saved = localStorage.getItem("fh6-theme"); if (saved === "light" || saved === "dark") theme = saved; } catch (e) {}
+    if (theme !== this.state.theme) this.setState({theme});
+    this.applyBodyTheme(theme);
+    try { const un = localStorage.getItem("fh6-units"); if (un === "metric" || un === "imperial") this.setState({units: un}); } catch (e) {}
+    try {
+      const p = new URLSearchParams(location.search);
+      const f = Object.assign({}, this.state.f); let touched = false;
+      Object.keys(f).forEach(k => { if (p.get(k)) { f[k] = p.get(k); touched = true; } });
+      const v = p.get("view");
+      if (touched || v) this.setState({f, view: v && v !== "detail" ? v : this.state.view});
+    } catch (e) {}
+    this.load();
+    this.loadFacets();
+    this._onWheel = (e) => {
+      if (this.state.view !== "explorer" || Math.abs(e.deltaY) < 4) return;
+      const hero = document.getElementById("fh6-hero") || document.querySelector("main > section");
+      if (!hero) return;
+      const now = Date.now();
+      if (this._snapLock && now - this._snapLock < 700) { e.preventDefault(); return; }
+      const doc = document.scrollingElement || document.documentElement;
+      const y = doc.scrollTop;
+      const target = Math.max(0, hero.offsetTop + hero.offsetHeight - 60);
+      if (e.deltaY > 0 && y < target - 4) { e.preventDefault(); this._snapLock = now; doc.scrollTo({top: target, behavior: "smooth"}); }
+      else if (e.deltaY < 0 && y > 4 && y <= target + 4) { e.preventDefault(); this._snapLock = now; doc.scrollTo({top: 0, behavior: "smooth"}); }
+    };
+    window.addEventListener("wheel", this._onWheel, {passive: false});
+  }
+
+  componentWillUnmount() {
+    if (this._onWheel) window.removeEventListener("wheel", this._onWheel);
+    clearTimeout(this._qTimer);
+  }
+
+  loadKey() {
+    const s = this.state, p = this.props;
+    return JSON.stringify([s.f, s.sortKey, s.sortDir, s.page, s.units, this.cfg("supabaseUrl"), this.cfg("supabaseAnonKey"), this.table(), this.cfg("sqlRpc")]);
+  }
+
+  componentDidUpdate() {
+    if (this.loadKey() !== this._loadKey) this.load();
+  }
+
+  // ---- database access ----------------------------------------------------
+  cfg(k) {
+    const g = (typeof window !== "undefined" && window.FH6_CONFIG) || {};
+    return this.props[k] || g[k] || "";
+  }
+  table() { return this.cfg("table") || T_DEFAULT; }
+  configured() { return !!(this.cfg("supabaseUrl") && this.cfg("supabaseAnonKey")); }
+
+  runSql(sql) {
+    if (!this.configured()) return Promise.resolve({ok: false, kind: "unconfigured", message: "No Supabase project is connected. Set supabaseUrl and supabaseAnonKey to execute this query.", rows: []});
+    const url = String(this.cfg("supabaseUrl")).replace(/\/$/, "");
+    const key = this.cfg("supabaseAnonKey");
+    const rpc = this.cfg("sqlRpc") || "run_car_query";
+    return fetch(url + "/rest/v1/rpc/" + rpc, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", apikey: key, Authorization: "Bearer " + key},
+      body: JSON.stringify({query: sql})
+    }).then(r => r.text().then(t => {
+      if (!r.ok) { const e = new Error("HTTP " + r.status + " — " + (t || r.statusText).slice(0, 240)); e.kind = "error"; throw e; }
+      return t ? JSON.parse(t) : [];
+    })).then(d => ({ok: true, rows: Array.isArray(d) ? d : (d && Array.isArray(d.rows) ? d.rows : [])}))
+      .catch(err => { const e = err instanceof Error ? err : new Error(String((err && err.message) || err)); return {ok: false, kind: e.kind || "error", message: e.message, rows: []}; });
+  }
+
+  // ---- constraints → SQL --------------------------------------------------
+  u() { return UNITS[this.state.units] || UNITS.imperial; }
+
+  predicates(f) {
+    const p = [];
+    const u = this.u();
+    const add = (k, label, sql) => p.push({k, label, sql});
+    if (f.q) add("q", 'text "' + f.q + '"', "(" + Q.make + " || ' ' || " + Q.model + " || ' ' || coalesce(" + Q.type + ",'')) ILIKE '%" + esc(f.q) + "%'");
+    if (f.make) add("make", "make " + f.make, Q.make + " = '" + esc(f.make) + "'");
+    if (f.model) add("model", "model " + f.model, Q.model + " = '" + esc(f.model) + "'");
+    if (f.cls) add("cls", "class " + f.cls, Q.cls + " = '" + esc(f.cls) + "'");
+    if (f.dt) add("dt", "drivetrain " + f.dt, Q.dt + " = '" + esc(f.dt) + "'");
+    if (f.type) add("type", "type " + f.type, Q.type + " = '" + esc(f.type) + "'");
+    if (f.country) add("country", "country " + f.country, Q.country + " = '" + esc(f.country) + "'");
+    if (f.rarity) add("rarity", "rarity " + f.rarity, Q.rarity + " = '" + esc(f.rarity) + "'");
+    if (f.epos) add("epos", "engine " + f.epos, Q.epos + " = '" + esc(f.epos) + "'");
+    const rng = (key, col, unitLabel, unit) => {
+      const min = nn(f[key + "Min"]), max = nn(f[key + "Max"]);
+      if (min != null) add(key + "Min", unitLabel + " ≥ " + num(min) + unit, col + " >= " + min);
+      if (max != null) add(key + "Max", unitLabel + " ≤ " + num(max) + unit, col + " <= " + max);
+    };
+    rng("pi", Q.pi, "PI", "");
+    rng("year", Q.year, "year", "");
+    rng("price", Q.price, "value", " Cr");
+    rng("hp", Q.hp, "power", " hp");
+    rng("wt", u.wt.col, "weight", " " + u.wt.unit);
+    rng("tq", u.tq.col, "torque", " " + u.tq.unit);
+    return p;
+  }
+
+  sortSql(key) {
+    const u = this.u();
+    const m = {car: Q.make + ", " + Q.model, year: Q.year, type: Q.type, cls: Q.cls, pi: Q.pi,
+      country: Q.country, price: Q.price, rarity: Q.rarity, hp: Q.hp, dt: Q.dt, epos: Q.epos,
+      source: Q.source, tq: u.tq.col, wt: u.wt.col, pw: u.pw.col};
+    return m[key] || Q.pi;
+  }
+
+  buildSql(f, o) {
+    const preds = this.predicates(f);
+    const where = preds.length ? "\nWHERE " + preds.map(p => p.sql).join("\n  AND ") : "";
+    if (o && o.count) return "SELECT count(*) AS n\nFROM " + this.table() + where + ";";
+    const col = this.sortSql(o.sortKey);
+    return "SELECT " + SELECT_COLS + "\nFROM " + this.table() + where +
+      "\nORDER BY " + col + " " + (o.dir === 1 ? "ASC" : "DESC") + " NULLS LAST" +
+      "\nLIMIT " + o.limit + " OFFSET " + o.offset + ";";
+  }
+
+  load() {
+    const s = this.state, f = s.f;
+    const sql = this.buildSql(f, {sortKey: s.sortKey, dir: s.sortDir, limit: PAGE, offset: s.page * PAGE});
+    const token = ++this.reqToken;
+    this._loadKey = this.loadKey();
+    this.setState({sql, status: "loading", errorMsg: "", diagnosis: undefined});
+    Promise.all([this.runSql(sql), this.runSql(this.buildSql(f, {count: true}))])
+      .then(([res, cntRes]) => {
+        if (token !== this.reqToken) return;
+        if (!res.ok) {
+          this.setState({rows: [], total: 0, status: res.kind === "unconfigured" ? "unconfigured" : "error", errorMsg: res.message || ""});
+          return;
+        }
+        const mapped = res.rows.map(mapRow);
+        mapped.forEach(c => { this.cache[c.id] = c; });
+        const cnt = cntRes.ok ? cntRes.rows : null;
+        const total = cnt && cnt[0] ? Number(cnt[0].n) : mapped.length;
+        this.setState({rows: mapped, total, status: "ok"});
+        if (!mapped.length) this.diagnose(f, (d) => this.setState({diagnosis: d}));
+      });
+  }
+
+  loadFacets() {
+    if (!this.configured()) return;
+    const t = this.table();
+    const one = (col) => this.runSql("SELECT DISTINCT " + col + " AS v\nFROM " + t + "\nWHERE " + col + " IS NOT NULL\nORDER BY 1;")
+      .then(res => res.ok ? res.rows.map(x => x.v) : []);
+    Promise.all([one(Q.make), one(Q.type), one(Q.country), one(Q.rarity), one(Q.epos), one(Q.dt)])
+      .then(([make, type, country, rarity, epos, dt]) =>
+        this.setState(prev => ({facets: Object.assign({}, prev.facets, {make, type, country, rarity, epos, dt})})));
+    this.loadModels(this.state.f.make);
+    this.loadBounds();
+  }
+
+  loadModels(make) {
+    if (!this.configured()) return;
+    const where = make ? "\nWHERE " + Q.model + " IS NOT NULL AND " + Q.make + " = '" + esc(make) + "'" : "\nWHERE " + Q.model + " IS NOT NULL";
+    this.runSql("SELECT DISTINCT " + Q.model + " AS v\nFROM " + this.table() + where + "\nORDER BY 1;")
+      .then(res => this.setState(prev => ({facets: Object.assign({}, prev.facets, {model: res.ok ? res.rows.map(x => x.v) : []})})));
+  }
+
+  loadBounds() {
+    if (!this.configured()) return;
+    const u = this.u();
+    const cols = [["year", Q.year], ["price", Q.price], ["hp", Q.hp], ["wt", u.wt.col], ["tq", u.tq.col]];
+    const sql = "SELECT " + cols.map(([k, c]) => "min(" + c + ") AS " + k + "_lo, max(" + c + ") AS " + k + "_hi").join(",\n       ") +
+      "\nFROM " + this.table() + ";";
+    this.runSql(sql).then(res => {
+      if (!res.ok || !res.rows[0]) return;
+      const r = res.rows[0], b = {};
+      cols.forEach(([k]) => {
+        const lo = Number(r[k + "_lo"]), hi = Number(r[k + "_hi"]);
+        if (isFinite(lo) && isFinite(hi) && hi > lo) b[k] = [Math.floor(lo), Math.ceil(hi)];
+      });
+      b.pi = [100, 999];
+      this.setState({bounds: b});
+    });
+  }
+
+  diagnose(f, cb) {
+    const preds = this.predicates(f);
+    if (!preds.length || !this.configured()) { cb(null); return; }
+    Promise.all(preds.map(p => {
+      const relaxed = Object.assign({}, f); relaxed[p.k] = "";
+      return this.runSql(this.buildSql(relaxed, {count: true}))
+        .then(res => res.ok ? {label: p.label, n: res.rows[0] ? Number(res.rows[0].n) : 0} : null);
+    })).then(list => {
+      const ok = list.filter(Boolean);
+      if (!ok.length) { cb(null); return; }
+      ok.sort((a, b) => b.n - a.n);
+      cb(ok[0]);
+    });
+  }
+
+  // ---- navigation ---------------------------------------------------------
+  syncUrl(f, view) {
+    try {
+      const p = new URLSearchParams();
+      Object.keys(f).forEach(k => { if (f[k]) p.set(k, f[k]); });
+      if (view) p.set("view", view);
+      history.replaceState(null, "", location.pathname + (p.toString() ? "?" + p : ""));
+    } catch (e) {}
+  }
+
+  setF(patch) {
+    const f = Object.assign({}, this.state.f, patch);
+    if (patch && patch.make !== undefined && patch.make !== this.state.f.make) { f.model = ""; this.loadModels(patch.make); }
+    const upd = {f, page: 0};
+    if (patch && patch.q !== undefined) upd.qDraft = patch.q;
+    this.setState(upd);
+    this.syncUrl(f, this.state.view);
+  }
+
+  heroSearch = (text) => {
+    const parsed = this.parse(text || "");
+    this.setF(parsed.f);
+    const hero = document.getElementById("fh6-hero");
+    const doc = document.scrollingElement || document.documentElement;
+    if (!hero || !doc) return;
+    this._snapLock = Date.now();
+    doc.scrollTo({top: Math.max(0, hero.offsetTop + hero.offsetHeight - 60), behavior: "smooth"});
+  };
+
+  setUnits = (units) => {
+    if (units === this.state.units) return;
+    const f = Object.assign({}, this.state.f, {wtMin: "", wtMax: "", tqMin: "", tqMax: ""});
+    this.setState({units, f, page: 0}, () => this.loadBounds());
+    try { localStorage.setItem("fh6-units", units); } catch (e) {}
+  };
+
+  go = (view) => this.setState({view, detailId: view === "detail" ? this.state.detailId : null});
+  openCar = (id) => this.setState({view: "detail", detailId: id});
+  toggleCompare = (id) => {
+    const c = this.state.compare.includes(id) ? this.state.compare.filter(x => x !== id) : this.state.compare.concat([id]).slice(-4);
+    this.setState({compare: c});
+  };
+
+  // ---- natural language → constraints ------------------------------------
+  parse(text) {
+    const t = " " + text.toLowerCase() + " ";
+    const f = Object.assign({}, EMPTY_F);
+    const notes = [];
+    const money = (str) => { const m = str.match(/([\d.]+)\s*(k|000)?/); if (!m) return null; let v = parseFloat(m[1]); if (m[2] || v < 1000) v = v * 1000; return Math.round(v); };
+
+    let m = t.match(/(?:under|below|less than|max|up to|<)\s*([\d.,]+\s*k?)\s*(?:cr|credits)?/);
+    if (m) { const v = money(m[1].replace(/,/g, "")); if (v) { f.priceMax = String(v); notes.push('"' + m[1].trim() + '" read as a hard ceiling of ' + num(v) + ' Cr ("Value (Cr)" <= ' + v + ")."); } }
+
+    m = t.match(/(\d{4})\s*(?:\+|or later|or newer|and newer|onwards)/);
+    if (m) f.yearMin = m[1];
+    if (!f.yearMin && /\b(?:from|after|since)\s*(\d{4})/.test(t)) f.yearMin = t.match(/\b(?:from|after|since)\s*(\d{4})/)[1];
+    if (/\b(90s|nineties)\b/.test(t)) { f.yearMin = "1990"; f.yearMax = "1999"; notes.push('"90s" read as model years 1990–1999.'); }
+    if (/\b(2000s)\b/.test(t) && !f.yearMin) { f.yearMin = "2000"; f.yearMax = "2009"; }
+
+    m = t.match(/(?:around|about|~|approximately|roughly)\s*([\d,]+)\s*(?:hp|bhp|horsepower)/);
+    if (m) { const hp = parseInt(m[1].replace(/,/g, ""), 10); f.hpMin = String(hp - 50); f.hpMax = String(hp + 50); notes.push('"Around ' + num(hp) + ' hp" was widened to a ±50 hp band (' + num(hp - 50) + '–' + num(hp + 50) + ' hp).'); }
+    else {
+      m = t.match(/([\d,]+)\s*\+?\s*(?:hp|bhp|horsepower)/);
+      if (m) {
+        const hp = parseInt(m[1].replace(/,/g, ""), 10);
+        if (/\+|more|plus|over|above|at least/.test(t)) f.hpMin = String(hp);
+        else { f.hpMin = String(hp - 50); f.hpMax = String(hp + 50); notes.push("A single horsepower figure was treated as a ±50 hp window."); }
+      }
+    }
+
+    if (/\bawd\b|all.?wheel|quattro/.test(t)) f.dt = "AWD";
+    else if (/\brwd\b|rear.?wheel/.test(t)) f.dt = "RWD";
+    else if (/\bfwd\b|front.?wheel/.test(t)) f.dt = "FWD";
+    if (f.dt) notes.push("Drivetrain matches the stock column, not drivetrain swaps.");
+
+    if (/\b(japanese|jdm|japan)\b/.test(t)) f.country = "Japan";
+    if (/\b(german|germany)\b/.test(t)) f.country = "Germany";
+    if (/\b(british|uk|england)\b/.test(t)) f.country = "UK";
+    if (/\b(american|usa|us muscle)\b/.test(t)) f.country = "USA";
+    if (/\bcheap|budget|affordable\b/.test(t) && !f.priceMax) { f.priceMax = "60000"; notes.push('"Cheap" was interpreted as under 60,000 CR — correct the ceiling if that is wrong.'); }
+    if (/lightweight|light\b/.test(t)) {
+      const lim = this.metric() ? "1270" : "2800";
+      f.wtMax = lim;
+      notes.push('"Lightweight" was interpreted as ' + num(Number(lim)) + " " + this.u().wt.unit + " or less.");
+    }
+    const cls = t.match(/\bclass\s*(d|c|b|a|s1|s2|r|x)\b/);
+    if (cls) f.cls = cls[1].toUpperCase();
+    const knownMakes = this.state.facets.make || [];
+    const hitMake = knownMakes.find(mk => t.includes(String(mk).toLowerCase()));
+    if (hitMake) f.make = hitMake;
+
+    if (!Object.keys(f).some(k => f[k])) { f.q = text.trim(); notes.push("No structured constraints were recognised, so this ran as an ILIKE search on Make, Model and Type."); }
+    notes.push("Only stock columns are queried — upgrades and tunes are not modelled.");
+    return {f, notes};
+  }
+
+  send = () => {
+    const text = this.state.chatDraft.trim();
+    if (!text) return;
+    const parsed = this.parse(text);
+    const sql = this.buildSql(parsed.f, {sortKey: "pi", dir: -1, limit: 10, offset: 0});
+    const id = "m" + (++this.msgId);
+    this.setState({chatDraft: "", messages: this.state.messages.concat([{kind: "user", text}, {kind: "result", id, parsed, sql, status: "running", rows: []}])});
+    this.runMsg(id, parsed.f, sql);
+  };
+
+  runMsg(id, f, sql) {
+    this.patchMsg(id, {status: "running", errorMsg: ""});
+    this.runSql(sql).then(res => {
+      if (!res.ok) {
+        this.patchMsg(id, {status: res.kind === "unconfigured" ? "unconfigured" : "error", errorMsg: res.message || "", rows: []});
+        return;
+      }
+      const mapped = res.rows.map(mapRow);
+      mapped.forEach(c => { this.cache[c.id] = c; });
+      this.patchMsg(id, {status: "ok", rows: mapped});
+      if (!mapped.length) this.diagnose(f, (d) => this.patchMsg(id, {diagnosis: d}));
+    });
+  }
+
+  patchMsg(id, patch) {
+    this.setState(st => ({messages: st.messages.map(m => m.id === id ? Object.assign({}, m, patch) : m)}));
+  }
+
+  relaxations(f, apply) {
+    const out = [];
+    const push = (label, patch) => out.push({label, apply: () => apply(patch)});
+    if (f.hpMin || f.hpMax) push("Widen horsepower band ±100 hp", {hpMin: f.hpMin ? String(Number(f.hpMin) - 50) : "", hpMax: f.hpMax ? String(Number(f.hpMax) + 50) : ""});
+    if (f.priceMax) push("Raise budget 25% → " + num(Math.round(Number(f.priceMax) * 1.25)) + " Cr", {priceMax: String(Math.round(Number(f.priceMax) * 1.25))});
+    if (f.dt) push("Drop the drivetrain filter", {dt: ""});
+    if (f.yearMin) push("Widen years to " + (Number(f.yearMin) - 10) + "+", {yearMin: String(Number(f.yearMin) - 10)});
+    if (f.cls) push("Drop the class filter", {cls: ""});
+    if (f.country) push("Drop the country filter", {country: ""});
+    if (!out.length) push("Clear all filters", Object.assign({}, EMPTY_F));
+    return out.slice(0, 4);
+  }
+
+  // ---- cells --------------------------------------------------------------
+  metric() { return this.state.units === "metric"; }
+  tqOf(c) { return this.metric() ? c.tq_m : c.tq_i; }
+  wtOf(c) { return this.metric() ? c.wt_m : c.wt_i; }
+  pw(c) { return this.metric() ? c.pw_m : c.pw_i; }
+
+  cellFor(c, key, pad) {
+    const tdBase = "padding:" + pad + ";border-top:1px solid var(--l1);white-space:nowrap;";
+    const mono = "font-family:" + MONO + ";font-size:12px;color:var(--text)";
+    const dim = "font-family:" + MONO + ";font-size:11px;color:var(--faint);font-style:italic";
+    const badge = (fg) => "display:inline-block;padding:2px 7px;background:var(--badge);border:1px solid var(--l2);font-family:" + MONO + ";font-size:11px;color:" + fg;
+    let text, span, align = "right";
+    const or = (v, fmt) => v == null ? null : (fmt ? fmt(v) : String(v));
+    switch (key) {
+      case "car": align = "left"; text = (c.make || "") + " " + (c.model || ""); span = "font-size:13px;font-weight:500;color:var(--ink)"; break;
+      case "year": text = or(c.year); span = mono; break;
+      case "price": text = or(c.price, v => num(v) + " Cr"); span = mono; break;
+      case "pi": text = or(c.pi); span = mono; break;
+      case "cls": align = "left"; text = or(c.cls); span = badge(["S1","S2","R","X"].includes(c.cls) ? ACCENT : "var(--soft)"); break;
+      case "type": align = "left"; text = or(c.type); span = badge("var(--muted)"); break;
+      case "country": align = "left"; text = or(c.country); span = mono; break;
+      case "rarity": align = "left"; text = or(c.rarity); span = badge("var(--muted)"); break;
+      case "hp": text = or(c.hp, num); span = "font-family:" + MONO + ";font-size:12px;color:var(--ink);font-weight:500"; break;
+      case "tq": text = or(this.tqOf(c), num); span = mono; break;
+      case "wt": text = or(this.wtOf(c), num); span = mono; break;
+      case "dt": align = "left"; text = or(c.dt); span = badge("var(--soft)"); break;
+      case "epos": align = "left"; text = or(c.epos); span = badge("var(--muted)"); break;
+      case "source": align = "left"; text = or(c.source); span = dim.replace("italic", "normal"); break;
+      case "pw": text = or(this.pw(c), v => Number(v).toFixed(3)); span = mono; break;
+      default: text = null; span = dim;
+    }
+    if (text == null) { text = UNK; span = dim; }
+    return {tdStyle: tdBase + "text-align:" + align, spanStyle: span, text};
+  }
+
+  rowFor(c, cols, pad, i) {
+    const sel = this.state.compare.includes(c.id);
+    const delay = Math.min(i || 0, 12) * 0.022;
+    return {
+      cells: cols.map(k => this.cellFor(c, k, pad)),
+      open: () => this.openCar(c.id),
+      toggle: () => this.toggleCompare(c.id),
+      stop: (e) => e.stopPropagation(),
+      selected: sel,
+      style: "cursor:pointer;animation:fh6row .34s ease " + delay.toFixed(3) + "s both;" + (sel ? "background:rgba(232,98,42,0.07);" : ""),
+      cellPad: "padding:" + pad + ";border-top:1px solid var(--l1);text-align:center"
+    };
+  }
+
+  thStyle(align, active) {
+    return "text-align:" + align + ";padding:11px 12px;border-bottom:1px solid var(--l2);font-family:" + MONO +
+      ";font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;white-space:nowrap;cursor:pointer;color:" + (active ? ACCENT : "var(--dim2)");
+  }
+
+  renderVals() {
+    const s = this.state, f = s.f;
+    const pad = this.props.density === "compact" ? "8px 12px" : "13px 14px";
+    const metric = s.units === "metric";
+    const uCfg = UNITS[s.units] || UNITS.imperial;
+    const colLabel = (c) => c.key === "tq" ? "Torque (" + uCfg.tq.unit + ")"
+      : c.key === "wt" ? "Weight (" + uCfg.wt.unit + ")"
+      : c.key === "pw" ? "Power/weight (" + uCfg.pw.unit + ")"
+      : c.key === "price" ? "Value (Cr)" : c.key === "hp" ? "Power (hp)" : c.label;
+    const cols = COLS.filter(c => s.columns.includes(c.key));
+    const rows = s.rows;
+    const pages = Math.max(1, Math.ceil(s.total / PAGE));
+    const page = Math.min(s.page, pages - 1);
+    const connected = this.configured();
+
+    const navStyle = (v) => "padding:8px 12px;background:transparent;border:0;border-bottom:2px solid " + (s.view === v ? ACCENT : "transparent") +
+      ";color:" + (s.view === v ? "var(--ink)" : "var(--dim)") + ";font-size:13px;cursor:pointer;white-space:nowrap";
+
+    const mkSelect = (key, label, options) => ({
+      label, value: f[key],
+      options: [{value: "", label: options.length ? "All" : "All (awaiting data)"}].concat(options.map(o => ({value: o, label: o}))),
+      onChange: (e) => this.setF({[key]: e.target.value})
+    });
+    const SL = "position:absolute;top:0;left:0;width:100%;height:24px;margin:0;background:transparent;pointer-events:none;-webkit-appearance:none;appearance:none;outline:none;";
+    const mkSlider = (key, label, step, fmt) => {
+      const b = s.bounds[key];
+      const lo = b ? b[0] : 0, hi = b ? b[1] : 100, span = (hi - lo) || 1;
+      const rawMin = nn(f[key + "Min"]), rawMax = nn(f[key + "Max"]);
+      const vMin = rawMin == null ? lo : Math.max(lo, Math.min(rawMin, hi));
+      const vMax = rawMax == null ? hi : Math.max(lo, Math.min(rawMax, hi));
+      const pct = (v) => ((v - lo) / span) * 100;
+      const touched = rawMin != null || rawMax != null;
+      const set = (side, raw) => {
+        let v = Math.round(Number(raw));
+        if (!isFinite(v)) return;
+        if (side === "Min") { if (v > vMax) v = vMax; this.setF({[key + "Min"]: v <= lo ? "" : String(v)}); }
+        else { if (v < vMin) v = vMin; this.setF({[key + "Max"]: v >= hi ? "" : String(v)}); }
+      };
+      const minOnTop = pct(vMin) > 82;
+      return {
+        label, lo, hi, step, vMin, vMax, disabled: !b,
+        loLabel: b ? fmt(lo) : "—", hiLabel: b ? fmt(hi) : "—",
+        readout: b ? (fmt(vMin) + " – " + fmt(vMax)) : "awaiting data",
+        readoutStyle: "font-family:" + MONO + ";font-size:11px;color:" + (touched ? "var(--accent)" : "var(--dim)"),
+        fillStyle: "position:absolute;top:11px;height:2px;background:" + (b ? "var(--accent)" : "var(--l3)") +
+          ";left:" + pct(vMin) + "%;right:" + (100 - pct(vMax)) + "%",
+        minStyle: SL + "z-index:" + (minOnTop ? 5 : 3),
+        maxStyle: SL + "z-index:4",
+        minAria: label + " minimum", maxAria: label + " maximum",
+        onMin: (e) => set("Min", e.target.value),
+        onMax: (e) => set("Max", e.target.value)
+      };
+    };
+    const kfmt = (v) => v >= 10000 ? Math.round(v / 1000) + "k" : num(v);
+
+    const chips = this.predicates(f).map(p => ({k: p.k, label: p.label, clear: () => this.setF({[p.k]: ""})}));
+    const bottleneckText = s.diagnosis === undefined ? "Measuring each constraint…"
+      : s.diagnosis ? s.diagnosis.label + " — dropping it alone returns " + num(s.diagnosis.n) + " row" + (s.diagnosis.n === 1 ? "" : "s")
+      : "Not determined — needs a connected database to count per constraint";
+
+    const statusMap = {
+      loading: {label: "Querying " + this.table(), color: "var(--warn)", detail: "Supabase RPC · read-only"},
+      ok: {label: "Connected", color: "var(--ok)", detail: num(s.total) + " row" + (s.total === 1 ? "" : "s") + " matched · Postgres"},
+      error: {label: "Query failed", color: ACCENT, detail: s.errorMsg},
+      unconfigured: {label: "Not connected", color: "var(--dim)", detail: "Supabase credentials not set"}
+    };
+    const st = statusMap[s.status] || statusMap.unconfigured;
+
+    const car = this.cache[s.detailId] || rows[0] || EMPTY_CAR;
+
+    const specVal = (v, unit) => v == null || v === "" ? UNK : (typeof v === "number" ? num(v) : String(v)) + (unit ? " " + unit : "");
+    const specStyle = (v) => v == null || v === "" ? "font-family:" + MONO + ";font-size:11px;color:var(--faint);font-style:italic" : "font-family:" + MONO + ";font-size:13px;color:var(--ink)";
+
+    const compareCars = s.compare.map(id => this.cache[id]).filter(Boolean);
+    const cmpAttrs = [
+      {label:"Year", get: c => c.year, kind:"plain", noGroup:true},
+      {label:"Value (Cr)", get: c => c.price, kind:"low"},
+      {label:"PI", get: c => c.pi, kind:"plain"},
+      {label:"Class", get: c => c.cls, kind:"plain"},
+      {label:"Power (hp)", get: c => c.hp, kind:"high"},
+      {label:"Torque (" + uCfg.tq.unit + ")", get: c => this.tqOf(c), kind:"high"},
+      {label:"Weight (" + uCfg.wt.unit + ")", get: c => this.wtOf(c), kind:"low"},
+      {label:"Power-to-weight (" + uCfg.pw.unit + ")", get: c => this.pw(c), kind:"high"},
+      {label:"Drivetrain", get: c => c.dt, kind:"plain"},
+      {label:"Engine position", get: c => c.epos, kind:"plain"},
+      {label:"Rarity", get: c => c.rarity, kind:"plain"},
+      {label:"Car type", get: c => c.type, kind:"plain"}
+    ];
+    const compareRows = cmpAttrs.map((a, i) => {
+      const vals = compareCars.map(c => a.get(c));
+      const nums = vals.filter(v => typeof v === "number");
+      const best = nums.length > 1 ? (a.kind === "high" ? Math.max.apply(null, nums) : a.kind === "low" ? Math.min.apply(null, nums) : null) : null;
+      const differs = new Set(vals.map(String)).size > 1;
+      return {
+        label: a.label + (a.derived ? " ·derived" : ""),
+        style: i % 2 ? "background:var(--stripe)" : "",
+        labelStyle: "text-align:left;padding:11px 14px;border-top:1px solid var(--l1);font-weight:400;color:" + (differs ? "var(--soft)" : "var(--dim2)") + ";font-size:13px;position:sticky;left:0;background:var(--panel);white-space:nowrap",
+        cells: vals.map(v => ({
+          text: v == null || v === "" ? UNK : typeof v === "number" ? (a.noGroup ? String(v) : num(v)) : String(v),
+          tdStyle: "padding:11px 14px;border-top:1px solid var(--l1);border-left:1px solid var(--l1);white-space:nowrap",
+          spanStyle: v == null || v === "" ? "font-family:" + MONO + ";font-size:11px;color:var(--faint);font-style:italic" : "font-family:" + MONO + ";font-size:13px;color:" + (best != null && v === best ? "var(--ink)" : "var(--muted)"),
+          mark: best != null && v === best ? (a.kind === "high" ? "highest" : "lowest") : "",
+          markStyle: best != null && v === best ? "margin-left:8px;font-family:" + MONO + ";font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:" + ACCENT : "display:none"
+        }))
+      };
+    });
+
+    const chatCols = ["car","year","price","pi","cls","hp","tq","wt","dt"];
+    const msgStatus = {
+      running: {label: "running…", color: "var(--warn)"},
+      ok: {label: "returned", color: "var(--ok)"},
+      error: {label: "failed", color: ACCENT},
+      unconfigured: {label: "not executed", color: "var(--dim)"}
+    };
+
+    const messages = s.messages.map(m => {
+      if (m.kind === "user") return {isUser: true, isResult: false, text: m.text, wrapStyle: "animation:fh6in .3s ease both"};
+      const pf = m.parsed.f, matched = m.rows || [];
+      const ms = msgStatus[m.status] || msgStatus.running;
+      const filters = [];
+      if (pf.yearMin || pf.yearMax) filters.push({label: "year", value: pf.yearMin && pf.yearMax ? pf.yearMin + "–" + pf.yearMax : pf.yearMin ? "≥ " + pf.yearMin : "≤ " + pf.yearMax});
+      if (pf.priceMax) filters.push({label: "Value (Cr)", value: "≤ " + num(Number(pf.priceMax))});
+      if (pf.hpMin || pf.hpMax) filters.push({label: "Power (HP)", value: (pf.hpMin ? num(Number(pf.hpMin)) : "0") + "–" + (pf.hpMax ? num(Number(pf.hpMax)) : "∞")});
+      if (pf.dt) filters.push({label: "Drivetrain", value: pf.dt});
+      if (pf.wtMax) filters.push({label: "Weight (" + uCfg.wt.unit + ")", value: "≤ " + num(Number(pf.wtMax))});
+      if (pf.make) filters.push({label: "Make", value: pf.make});
+      if (pf.country) filters.push({label: "Country", value: pf.country});
+      if (pf.cls) filters.push({label: "Class", value: pf.cls});
+      if (pf.type) filters.push({label: "Type", value: pf.type});
+      if (pf.q) filters.push({label: "ILIKE", value: pf.q});
+      const mDiag = m.diagnosis;
+      return {
+        isUser: false, isResult: true, wrapStyle: "animation:fh6in .3s ease both",
+        filters, notes: m.parsed.notes.map(t => ({text: t})),
+        sql: m.sql,
+        statusLabel: ms.label,
+        statusStyle: "font-family:" + MONO + ";font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:" + ms.color,
+        copyLabel: "Copy",
+        copySql: () => { try { navigator.clipboard.writeText(m.sql); } catch (e) {} },
+        rerun: () => this.runMsg(m.id, pf, m.sql),
+        isFailed: m.status === "error" || m.status === "unconfigured",
+        failTitle: m.status === "unconfigured" ? "Query not executed — no database connected" : "The database rejected this query",
+        failDetail: m.errorMsg || "",
+        hasMatches: m.status === "ok" && matched.length > 0,
+        isEmpty: m.status === "ok" && matched.length === 0,
+        matchCount: num(matched.length) + (matched.length === 1 ? " row" : " rows"),
+        matches: matched.map(c => ({cells: chatCols.map(k => this.cellFor(c, k, "11px 12px")), open: () => this.openCar(c.id)})),
+        reasons: matched.map(c => {
+          const bits = [];
+          if (pf.hpMin || pf.hpMax) bits.push(specVal(c.hp, "hp") + " stock");
+          if (pf.priceMax && c.price != null) bits.push(num(c.price) + " Cr · " + num(Number(pf.priceMax) - c.price) + " Cr under ceiling");
+          if (pf.dt) bits.push(c.dt + " from stock");
+          if (pf.yearMin && c.year != null) bits.push(c.year + " model year");
+          if (!bits.length) bits.push((c.cls || "?") + " " + (c.pi == null ? UNK : c.pi));
+          return {car: (c.make || "") + " " + (c.model || ""), why: bits.join(" · ")};
+        }),
+        bottleneck: mDiag === undefined ? "Measuring each constraint…" : mDiag ? mDiag.label + " — dropping it alone returns " + num(mDiag.n) + " row" + (mDiag.n === 1 ? "" : "s") : "Not determined — needs a connected database",
+        relax: this.relaxations(pf, (patch) => {
+          const nf = Object.assign({}, pf, patch);
+          const sql = this.buildSql(nf, {sortKey: "pi", dir: -1, limit: 10, offset: 0});
+          const id = "m" + (++this.msgId);
+          this.setState(prev => ({messages: prev.messages.concat([{kind: "result", id, parsed: {f: nf, notes: ["Constraint relaxed on request; the query was rebuilt and re-run rather than reinterpreted."]}, sql, status: "running", rows: []}])}));
+          this.runMsg(id, nf, sql);
+        }),
+        editFilters: () => { this.setF(pf); this.setState({view: "explorer"}); }
+      };
+    });
+
+    return {
+      navItems: [["explorer","Cars"],["compare","Compare"],["chat","Car Finder"],["about","About / Data"]].map(([v, label]) => ({label, style: navStyle(v), go: () => this.go(v)})),
+      compareCount: String(s.compare.length),
+      goCompare: () => this.go("compare"), goChat: () => this.go("chat"), goExplorer: () => this.go("explorer"),
+      theme: s.theme,
+      themeGlyph: s.theme === "light" ? "☾" : "☀",
+      toggleTheme: () => { const t = s.theme === "light" ? "dark" : "light"; this.setState({theme: t}); this.applyBodyTheme(t); try { localStorage.setItem("fh6-theme", t); } catch (e) {} },
+      isExplorer: s.view === "explorer", isDetail: s.view === "detail", isCompare: s.view === "compare", isChat: s.view === "chat", isAbout: s.view === "about",
+
+      searchText: s.searchText,
+      onSearchInput: (e) => this.setState({searchText: e.target.value}),
+      onSearchKey: (e) => { if (e.key === "Enter") this.heroSearch(s.searchText); },
+      runSearch: () => this.heroSearch(s.searchText),
+      examples: ["cheap AWD cars", "Japanese cars under 100k", "cars from the 90s with 300+ hp", "AWD cars around 500 hp", "lightweight RWD cars", "under 80k with forced induction"]
+        .map(q => ({label: q, go: () => { this.setState({searchText: q}); this.heroSearch(q); }})),
+
+      tableQuery: s.qDraft,
+      hasTableQuery: !!s.qDraft,
+      onTableQuery: (e) => {
+        const v = e.target.value;
+        this.setState({qDraft: v});
+        clearTimeout(this._qTimer);
+        this._qTimer = setTimeout(() => this.setF({q: v.trim()}), 350);
+      },
+      onTableQueryKey: (e) => { if (e.key === "Enter") { clearTimeout(this._qTimer); this.setF({q: s.qDraft.trim()}); } },
+      clearTableQuery: () => { clearTimeout(this._qTimer); this.setF({q: ""}); },
+
+      filtersOpen: s.filtersOpen,
+      toggleFilters: () => this.setState({filtersOpen: !s.filtersOpen}),
+      filterCount: String(chips.filter(c => c.k !== "q").length),
+      hasFilterCount: chips.filter(c => c.k !== "q").length > 0,
+      filterBtnStyle: "display:flex;align-items:center;gap:8px;padding:0 14px;background:" + (s.filtersOpen ? "var(--input)" : "transparent") +
+        ";border:1px solid " + (s.filtersOpen ? "var(--l4)" : "var(--l3)") + ";color:" + (s.filtersOpen ? "var(--ink)" : "var(--muted)") + ";font-size:13px;cursor:pointer",
+      filterCaretStyle: "font-size:10px;color:var(--dim);transition:transform .15s ease;transform:rotate(" + (s.filtersOpen ? "180deg" : "0deg") + ")",
+
+      selectFilters: [
+        mkSelect("make", "Make", s.facets.make),
+        mkSelect("model", "Model", s.facets.model || []),
+        mkSelect("cls", "Class", ["D","C","B","A","S1","S2","R","X"]),
+        mkSelect("type", "Type", s.facets.type),
+        mkSelect("country", "Country", s.facets.country),
+        mkSelect("dt", "Drivetrain", (s.facets.dt && s.facets.dt.length) ? s.facets.dt : ["AWD","RWD","FWD"]),
+        mkSelect("rarity", "Rarity", s.facets.rarity || []),
+        mkSelect("epos", "Engine pos.", s.facets.epos || [])
+      ],
+      sliderFilters: [
+        mkSlider("pi", "PI", 1, (v) => String(v)),
+        mkSlider("year", "Year", 1, (v) => String(v)),
+        mkSlider("price", "Value (Cr)", 500, kfmt),
+        mkSlider("hp", "Power (hp)", 5, num),
+        mkSlider("tq", "Torque (" + uCfg.tq.unit + ")", 5, num),
+        mkSlider("wt", "Weight (" + uCfg.wt.unit + ")", metric ? 10 : 25, num)
+      ],
+      units: s.units,
+      isMetric: metric,
+      unitOptions: [["imperial", "Freedom"], ["metric", "Normal"]].map(([v, label]) => ({
+        label, onClick: () => this.setUnits(v),
+        style: "padding:6px 10px;background:" + (s.units === v ? "var(--accent)" : "transparent") + ";border:0;color:" +
+          (s.units === v ? "var(--onAccent)" : "var(--dim)") + ";font-family:" + MONO + ";font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer"
+      })),
+      toggleColumns: () => this.setState({columnsOpen: !s.columnsOpen}),
+      columnsOpen: s.columnsOpen,
+      allColumns: COLS.map(c => ({
+        label: colLabel(c),
+        style: "padding:5px 10px;background:" + (s.columns.includes(c.key) ? "rgba(232,98,42,0.14)" : "transparent") + ";border:1px solid " + (s.columns.includes(c.key) ? "rgba(232,98,42,0.5)" : "var(--l3)") + ";color:" + (s.columns.includes(c.key) ? "var(--accentSoft)" : "var(--dim)") + ";font-family:" + MONO + ";font-size:11px;cursor:" + (c.always ? "not-allowed" : "pointer"),
+        toggle: () => { if (c.always) return; this.setState({columns: s.columns.includes(c.key) ? s.columns.filter(k => k !== c.key) : COLS.filter(x => s.columns.includes(x.key) || x.key === c.key).map(x => x.key)}); }
+      })),
+      resetFilters: () => { this.setF(Object.assign({}, EMPTY_F)); this.setState({searchText: "", columns: DEFAULT_COLS.slice()}); },
+      activeChips: chips, chipsVisible: chips.length > 0,
+
+      resultSummary: s.status === "ok"
+        ? num(s.total) + (s.total === 1 ? " car matches" : " cars match") + (chips.length ? " " + chips.length + " constraint" + (chips.length === 1 ? "" : "s") : " the current view")
+        : s.status === "loading" ? "Waiting for Postgres…" : "No result set",
+      statusLabel: st.label,
+      statusDetail: st.detail,
+      statusDotStyle: "width:8px;height:8px;border-radius:50%;background:" + st.color + ";flex:0 0 auto",
+      sql: s.sql,
+      sqlOpen: s.sqlOpen,
+      sqlToggleLabel: s.sqlOpen ? "Hide SQL" : "Show SQL",
+      toggleSql: () => this.setState({sqlOpen: !s.sqlOpen}),
+      isLoading: s.status === "loading",
+      hasResults: s.status === "ok" && rows.length > 0,
+      noResults: s.status === "ok" && rows.length === 0,
+      isDisconnected: s.status === "error" || s.status === "unconfigured",
+      connTitle: s.status === "error" ? "The database returned an error" : "No database connected",
+      connBody: s.status === "error"
+        ? "The query below was sent to Supabase and rejected. Nothing is displayed from a failed query."
+        : "Cars are read live from a Supabase Postgres database; nothing is bundled into this frontend. Set the Supabase project URL and anon key, and expose a read-only SQL function, and every view here populates from real rows.",
+      connDetail: s.status === "error" ? s.errorMsg + "\n\n" + s.sql : "POST " + (this.cfg("supabaseUrl") || "<supabaseUrl>") + "/rest/v1/rpc/" + (this.cfg("sqlRpc") || "run_car_query") + "\n{ \"query\": \"" + (s.sql.split("\n")[0] || "SELECT …") + " …\" }\n\ntable: " + this.table(),
+      bottleneck: bottleneckText,
+      relaxOptions: this.relaxations(f, (patch) => this.setF(patch)),
+      columns: cols.map(c => ({
+        label: colLabel(c), arrow: s.sortKey === c.key ? (s.sortDir === 1 ? " ↑" : " ↓") : "",
+        style: this.thStyle(c.align, s.sortKey === c.key),
+        onSort: () => this.setState({sortKey: c.key, sortDir: s.sortKey === c.key ? -s.sortDir : (c.align === "left" ? 1 : -1), page: 0})
+      })),
+      rows: rows.map((c, i) => this.rowFor(c, cols.map(x => x.key), pad, i)),
+      pageLabel: s.total ? "Rows " + (page * PAGE + 1) + "–" + Math.min(s.total, page * PAGE + rows.length) + " of " + num(s.total) + " · page " + (page + 1) + "/" + pages + " · LIMIT " + PAGE + " OFFSET " + (page * PAGE) : "",
+      prevPage: () => this.setState({page: Math.max(0, page - 1)}),
+      nextPage: () => this.setState({page: Math.min(pages - 1, page + 1)}),
+      prevStyle: "padding:9px 14px;background:transparent;border:1px solid var(--l3);color:" + (page === 0 ? "var(--disabled)" : "var(--text)") + ";font-size:12px;cursor:" + (page === 0 ? "default" : "pointer"),
+      nextStyle: "padding:9px 14px;background:transparent;border:1px solid var(--l3);color:" + (page >= pages - 1 ? "var(--disabled)" : "var(--text)") + ";font-size:12px;cursor:" + (page >= pages - 1 ? "default" : "pointer"),
+
+      detailName: ((car.make || "") + " " + (car.model || "")).trim() || "—",
+      detailYear: car.year == null ? UNK : String(car.year),
+      detailDrivetrain: (car.dt || "—") + " · stock",
+      detailClassLabel: (car.cls || "—") + " " + (car.pi == null ? "" : car.pi),
+      detailClassStyle: "padding:3px 9px;background:var(--badge);border:1px solid " + (["S1","S2","R"].includes(car.cls) ? "rgba(232,98,42,0.5)" : "var(--l3)") + ";font-family:" + MONO + ";font-size:11px;color:" + (["S1","S2","R"].includes(car.cls) ? ACCENT : "var(--soft)"),
+      detailHeadline: [
+        {label: "Power", value: specVal(car.hp, "hp")},
+        {label: "Torque", value: specVal(this.tqOf(car), uCfg.tq.unit)},
+        {label: "Weight", value: specVal(this.wtOf(car), uCfg.wt.unit)},
+        {label: "Value", value: specVal(car.price, "Cr")},
+        {label: "Power/weight", value: specVal(this.pw(car), uCfg.pw.unit)}
+      ].map(h => ({label: h.label, value: h.value, style: "font-family:" + MONO + ";font-size:20px;font-weight:500;color:var(--ink);margin-top:6px"})),
+      detailSpecs: [
+        {label: "Year", v: car.year}, {label: "PI", v: car.pi}, {label: "Class", v: car.cls},
+        {label: "Type", v: car.type}, {label: "Country", v: car.country}, {label: "Rarity", v: car.rarity},
+        {label: "Drivetrain", v: car.dt}, {label: "Engine position", v: car.epos},
+        {label: "Torque", v: this.tqOf(car) == null ? null : num(this.tqOf(car)) + " " + uCfg.tq.unit},
+        {label: "Weight", v: this.wtOf(car) == null ? null : num(this.wtOf(car)) + " " + uCfg.wt.unit},
+        {label: "Power-to-weight", v: this.pw(car) == null ? null : Number(this.pw(car)).toFixed(3) + " " + uCfg.pw.unit},
+        {label: "Value", v: car.price == null ? null : num(car.price) + " Cr"}
+      ].map(x => ({label: x.label, value: specVal(x.v), style: specStyle(x.v)})),
+      detailProvenance: [
+        {label: "Store", value: connected ? "Supabase Postgres · " + this.table() : "Not connected", color: "var(--soft)"},
+        {label: "Source", value: car.source || UNK, color: car.source ? "var(--soft)" : "var(--faint)"},
+        {label: "Units shown", value: metric ? "Metric" : "Imperial", color: "var(--soft)"},
+        {label: "Row key", value: car.id ? String(car.id) : UNK, color: "var(--dim)"}
+      ].map(p => ({label: p.label, value: p.value, style: "font-family:" + MONO + ";font-size:12px;color:" + p.color})),
+      detailToggleCompare: () => this.toggleCompare(car.id),
+      detailCompareLabel: s.compare.includes(car.id) ? "Remove from compare" : "Add to compare",
+
+      compareCars: compareCars.map(c => ({name: ((c.make || "") + " " + (c.model || "")).trim(), sub: (c.year == null ? "—" : c.year) + " · " + (c.cls || "—") + " " + (c.pi == null ? "" : c.pi), remove: () => this.toggleCompare(c.id)})),
+      compareRows, hasCompare: compareCars.length > 0, noCompare: compareCars.length === 0,
+
+      messages, chatDraft: s.chatDraft,
+      onChatInput: (e) => this.setState({chatDraft: e.target.value}),
+      onChatKey: (e) => { if (e.key === "Enter") this.send(); },
+      sendChat: this.send,
+      clearChat: () => this.setState({messages: []}),
+      chatColumns: chatCols.map(k => { const c = COLS.find(x => x.key === k); return {label: c.label, style: this.thStyle(c.align, false) + ";cursor:default"}; }),
+
+      dbFacts: [
+        {label: "Store", value: "Supabase Postgres"},
+        {label: "Table", value: this.table()},
+        {label: "Access", value: "read-only SQL function via /rest/v1/rpc/" + (this.cfg("sqlRpc") || "run_car_query")},
+        {label: "Status", value: connected ? st.label : "Credentials not set"},
+        {label: "Units", value: metric ? "Metric columns" : "Imperial columns"}
+      ],
+
+      trustLevels: [
+        {badge: "VERIFIED IN-GAME", text: "Read from the game build and checked by an editor. Highest confidence.", color: "var(--ok)"},
+        {badge: "OFFICIAL ROSTER", text: "Present on the official FH6 car list. Roster membership is authoritative; individual figures may still be pending.", color: "var(--ok)"},
+        {badge: "COMMUNITY-SOURCED", text: "Contributed by players and cross-checked where possible. Shown with its last verified date.", color: "var(--warn)"},
+        {badge: "INFERRED / DERIVED", text: "Calculated from other columns — power-to-weight, for example. Always labelled ·derived and never presented as an in-game value.", color: "var(--soft)"}
+      ].map(t => ({badge: t.badge, text: t.text, badgeStyle: "display:inline-block;padding:3px 8px;border:1px solid " + t.color + ";font-family:" + MONO + ";font-size:10px;letter-spacing:0.1em;color:" + t.color}))
+    };
+  }
+}
+</script>
+</body>
+</html>
