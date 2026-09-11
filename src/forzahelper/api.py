@@ -302,8 +302,28 @@ def chat_endpoint(
 # share an origin -- which removes CORS from the picture entirely. Mounted last
 # because a mount at "/" matches everything, and the API routes above must win.
 
-_UI_DIR = Path(__file__).resolve().parents[2] / "ui"
-if _UI_DIR.is_dir():
+def _find_ui_dir() -> Path | None:
+    """Locate ui/ without assuming the deployed layout.
+
+    Vercel bundles the project and runs with the project root as the working
+    directory, but the package may sit at a different depth than in the repo,
+    so several candidates are tried rather than one hard-coded path.
+    """
+    candidates = [
+        Path(__file__).resolve().parents[2] / "ui",  # repo layout: src/forzahelper/
+        Path.cwd() / "ui",
+        Path(__file__).resolve().parents[1] / "ui",
+        Path(__file__).resolve().parents[3] / "ui",
+    ]
+    for candidate in candidates:
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
+
+
+_UI_DIR = _find_ui_dir()
+if _UI_DIR is not None:
+    logger.info("Serving the frontend from %s", _UI_DIR)
     app.mount("/", StaticFiles(directory=_UI_DIR, html=True), name="ui")
-else:  # pragma: no cover - only when the API is deployed without the frontend
-    logger.info("No ui/ directory at %s; serving the API only.", _UI_DIR)
+else:  # pragma: no cover - only when the API runs without the frontend
+    logger.warning("No ui/index.html found; serving the API only.")

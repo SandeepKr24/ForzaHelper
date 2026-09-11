@@ -36,3 +36,11 @@ dev = [
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
+
+[tool.vercel.fastapi.static]
+# The frontend is mounted with StaticFiles. Vercel normally promotes mounted
+# files to the CDN at build time, but it disables that whenever the app has
+# top-level middleware -- and CORSMiddleware is top-level here. Static assets
+# need no CORS headers, so promotion is forced back on; without this, every
+# asset request would invoke the function.
+cdn = true
