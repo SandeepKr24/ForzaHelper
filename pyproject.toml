@@ -2,7 +2,6 @@
 name = "forzahelper"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
 authors = [
     { name = "Sandeep Kumar", email = "sandeep.workmail24@gmail.com" }
 ]
