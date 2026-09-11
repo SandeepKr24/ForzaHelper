@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     pool_max_size: int = 5
     statement_timeout_ms: int = 10_000
 
+    # Vercel sets VERCEL=1. Each invocation is a short-lived process, so the
+    # pool must not hold connections open, and Supabase's transaction-mode
+    # pooler does not support prepared statements.
+    serverless: bool = Field(
+        default_factory=lambda: bool(os.environ.get("VERCEL"))
+    )
+
     default_limit: int = 50
     max_limit: int = 200
 
@@ -91,6 +98,18 @@ class Settings(BaseSettings):
                     )
                     break
         return self
+
+    @property
+    def effective_pool_sizes(self) -> tuple[int, int]:
+        """(min, max) connections. Serverless keeps none idle."""
+        if self.serverless:
+            return 0, 2
+        return self.pool_min_size, self.pool_max_size
+
+    @property
+    def prepare_threshold(self) -> int | None:
+        """None disables prepared statements, required by transaction pooling."""
+        return None if self.serverless else 5
 
     @property
     def conninfo(self) -> str:

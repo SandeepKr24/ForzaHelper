@@ -11,12 +11,14 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import Settings, get_settings
@@ -292,3 +294,16 @@ def chat_endpoint(
     from .chat.orchestrator import chat
 
     return chat(request, extractor=extractor, settings=settings)
+
+
+# ---------------------------------------------------------------- static site
+#
+# The frontend is served by this app so that both ship as one deployment and
+# share an origin -- which removes CORS from the picture entirely. Mounted last
+# because a mount at "/" matches everything, and the API routes above must win.
+
+_UI_DIR = Path(__file__).resolve().parents[2] / "ui"
+if _UI_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=_UI_DIR, html=True), name="ui")
+else:  # pragma: no cover - only when the API is deployed without the frontend
+    logger.info("No ui/ directory at %s; serving the API only.", _UI_DIR)

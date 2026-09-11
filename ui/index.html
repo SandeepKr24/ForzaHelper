@@ -185,7 +185,7 @@
       </section>
 
       <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">Running query against Postgres…</div>
+        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">Waiting for the API…</div>
       </sc-if>
 
       <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
@@ -347,7 +347,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between">
         <div>
           <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Car Finder</h1>
-          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">Describe the car you want. Your request is turned into a parameterised SQL query, run read-only against the Postgres database, and the returned rows are shown in full — the query is always visible, and results are never summarised away.</p>
+          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">Describe the car you want. Your request is sent to the ForzaHelper API, which resolves it into structured filters and runs them against Postgres. The filters and the request are always shown, and results are never summarised away.</p>
         </div>
         <button onClick="{{ clearChat }}" style="padding:8px 12px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-size:12px;cursor:pointer" style-hover="color:var(--ink)">Clear session</button>
       </div>
@@ -380,7 +380,7 @@
 
                 <div style="margin-top:14px;border:1px solid var(--l2);background:var(--input)">
                   <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--l2)">
-                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2)">Generated SQL</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2)">Request sent</span>
                     <span style="{{ msg.statusStyle }}">{{ msg.statusLabel }}</span>
                     <button onClick="{{ msg.copySql }}" style="margin-left:auto;padding:4px 9px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">{{ msg.copyLabel }}</button>
                     <button onClick="{{ msg.rerun }}" style="padding:4px 9px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">Re-run</button>
@@ -469,8 +469,8 @@
         </sc-for>
       </div>
       <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Where the data comes from</h2>
-      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">Cars live in a Supabase Postgres database and are never bundled into this frontend. Every table, filter option, count and comparison is the result of a live query, so the interface has no opinion about how many cars exist.</p>
-      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">The Car Finder translates a request into SQL and runs it through a read-only Postgres function via Supabase RPC. The generated query is shown with every answer, so a wrong result can be traced to a wrong constraint rather than guessed at. Filter and sort state in the explorer compiles to the same SQL, visible under “Show SQL”.</p>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">Cars live in a Supabase Postgres database, reached through the ForzaHelper API, and are never bundled into this frontend. Every table, filter option, count and comparison is the result of a live query, so the interface has no opinion about how many cars exist.</p>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">The Car Finder sends your words to the ForzaHelper API, which resolves them into structured filters and builds the query itself; the browser never writes SQL and holds no database credentials. The filters and the exact request are shown with every answer, so a wrong result can be traced to a wrong constraint rather than guessed at. Filter and sort state in the explorer produces the same kind of request, visible under “Show request”.</p>
       <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft)">
         <sc-for list="{{ dbFacts }}" as="d" hint-placeholder-count="4">
           <div style="display:flex;gap:12px"><span style="color:var(--dim2);min-width:150px">{{ d.label }}</span><span>{{ d.value }}</span></div>
@@ -490,7 +490,7 @@
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;apiBaseUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;http://localhost:8000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Backend&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Table&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;apiBaseUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Backend&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Table&quot;}}">
 // Unit system. `field` is the backend sort field; `key` is the mapped row key.
 const UNITS = {
   imperial: {tq: {key: "tq_i", field: "torque_lbft", unit: "lb-ft"},
@@ -501,6 +501,9 @@ const UNITS = {
              pw: {key: "pw_m", unit: "hp/kg"}}
 };
 const LB_PER_KG = 2.20462, LBFT_PER_NM = 0.737562;
+// Ports used by a standalone static dev server; anything else is same-origin.
+const DEV_STATIC_PORTS = ["3000", "5173", "5500", "8080"];
+const DEV_API = "http://localhost:8000";
 const PAGE = 12;
 const ACCENT = "var(--accent)";
 const MONO = "'IBM Plex Mono',monospace";
@@ -617,8 +620,22 @@ class Component extends DCLogic {
     const g = (typeof window !== "undefined" && window.FH6_CONFIG) || {};
     return this.props[k] || g[k] || "";
   }
-  apiBase() { return String(this.cfg("apiBaseUrl") || "http://localhost:8000").replace(/\/$/, ""); }
-  configured() { return !!this.apiBase(); }
+  // Explicit config wins. Otherwise: same origin when deployed (frontend and
+  // API ship together on Vercel, so no CORS is involved), and the local backend
+  // when the page is served from a separate dev server.
+  apiBase() {
+    const configured = this.cfg("apiBaseUrl");
+    if (configured) return String(configured).replace(/\/$/, "");
+    if (typeof location === "undefined") return DEV_API;
+    // Served by the backend itself -- deployed, or `uv run forzahelper` -- so
+    // the API is on this same origin. Only a separate static dev server (or a
+    // file:// page) needs to be pointed at the local backend.
+    if (location.protocol === "file:") return DEV_API;
+    return DEV_STATIC_PORTS.indexOf(location.port) === -1 ? "" : DEV_API;
+  }
+  // Same-origin ("") is a valid base, so this is about being able to reach an
+  // API at all rather than about the string being non-empty.
+  configured() { return typeof fetch === "function"; }
 
   // Single entry point to the backend. No credentials and no SQL leave the
   // browser: it sends structured filters and receives structured rows.
@@ -647,7 +664,7 @@ class Component extends DCLogic {
       });
   }
 
-  // ---- constraints → SQL --------------------------------------------------
+  // ---- filter translation ---------------------------------------------------
   u() { return UNITS[this.state.units] || UNITS.imperial; }
 
   // UI filter state -> backend CarFilters. Single-choice dropdowns become
@@ -1039,7 +1056,7 @@ class Component extends DCLogic {
 
     const statusMap = {
       loading: {label: "Querying API", color: "var(--warn)", detail: "ForzaHelper backend · structured filters"},
-      ok: {label: "Connected", color: "var(--ok)", detail: num(s.total) + " row" + (s.total === 1 ? "" : "s") + " matched · Postgres"},
+      ok: {label: "Connected", color: "var(--ok)", detail: num(s.total) + " row" + (s.total === 1 ? "" : "s") + " matched"},
       error: {label: "Query failed", color: ACCENT, detail: s.errorMsg},
       unconfigured: {label: "Not connected", color: "var(--dim)", detail: "apiBaseUrl not set"}
     };
@@ -1213,7 +1230,7 @@ class Component extends DCLogic {
 
       resultSummary: s.status === "ok"
         ? num(s.total) + (s.total === 1 ? " car matches" : " cars match") + (chips.length ? " " + chips.length + " constraint" + (chips.length === 1 ? "" : "s") : " the current view")
-        : s.status === "loading" ? "Waiting for Postgres…" : "No result set",
+        : s.status === "loading" ? "Waiting for the API…" : "No result set",
       statusLabel: st.label,
       statusDetail: st.detail,
       statusDotStyle: "width:8px;height:8px;border-radius:50%;background:" + st.color + ";flex:0 0 auto",

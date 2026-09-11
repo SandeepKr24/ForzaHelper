@@ -26,13 +26,17 @@ def get_pool(settings: Settings | None = None) -> ConnectionPool:
     global _pool
     if _pool is None:
         settings = settings or get_settings()
+        min_size, max_size = settings.effective_pool_sizes
         _pool = ConnectionPool(
             conninfo=settings.conninfo,
-            min_size=settings.pool_min_size,
-            max_size=settings.pool_max_size,
+            min_size=min_size,
+            max_size=max_size,
             kwargs={
                 "row_factory": dict_row,
                 "options": f"-c statement_timeout={settings.statement_timeout_ms}",
+                # Disabled under transaction pooling, where a connection is not
+                # bound to one session and prepared statements break.
+                "prepare_threshold": settings.prepare_threshold,
             },
             open=False,
         )
