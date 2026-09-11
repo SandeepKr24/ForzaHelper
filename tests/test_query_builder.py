@@ -145,3 +145,52 @@ def test_ascii_only_columns_skip_the_fold():
     clauses, params = build_where(CarFilters(country=["Japan"]))
     assert clauses == ["lower(country) = ANY(%(country)s)"]
     assert "fold_from" not in params
+
+
+# ------------------------------------------------------------------ settings
+
+
+def test_bare_environment_variables_configure_the_database(monkeypatch, tmp_path):
+    """Vercel imports these names from .env.example; they must work there.
+
+    The deployed app has no .env file, so the bare keys have to be read from
+    real environment variables.
+    """
+    import forzahelper.config as config
+
+    monkeypatch.setattr(config, "ENV_PATH", tmp_path / "absent.env")
+    for key, value in {
+        "host": "db.example.com",
+        "port": "6543",
+        "database": "postgres",
+        "user": "postgres.abc",
+        "password": "s3cret",
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    settings = config.Settings()
+    assert settings.db_host == "db.example.com"
+    assert settings.db_port == 6543
+    assert settings.db_user == "postgres.abc"
+    assert "password=s3cret" in settings.conninfo
+
+
+def test_a_stray_bare_user_variable_is_ignored(monkeypatch, tmp_path):
+    """"user" alone is a plausible system variable and must not be trusted."""
+    import forzahelper.config as config
+
+    monkeypatch.setattr(config, "ENV_PATH", tmp_path / "absent.env")
+    monkeypatch.setenv("user", "some-login-name")
+
+    assert config.Settings().db_user == ""
+
+
+def test_prefixed_variables_win_over_bare_ones(monkeypatch, tmp_path):
+    import forzahelper.config as config
+
+    monkeypatch.setattr(config, "ENV_PATH", tmp_path / "absent.env")
+    monkeypatch.setenv("host", "bare.example.com")
+    monkeypatch.setenv("password", "bare")
+    monkeypatch.setenv("FH_DB_HOST", "prefixed.example.com")
+
+    assert config.Settings().db_host == "prefixed.example.com"

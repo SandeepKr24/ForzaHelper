@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from dotenv import dotenv_values
 from pydantic import Field, model_validator
@@ -75,13 +76,32 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2048
     llm_timeout_s: float = 20.0
 
+    # The bare key names used by .env, which Vercel also picks up from
+    # .env.example when importing environment variables.
+    _BARE_KEYS = ("host", "port", "database", "user", "password")
+
     @model_validator(mode="after")
     def _fill_from_dotenv(self) -> "Settings":
-        """Back-fill unset DB fields from the bare keys in .env."""
+        """Back-fill unset DB fields from bare keys.
+
+        Sources, in increasing precedence: the .env file (local development),
+        then bare environment variables of the same names (what a Vercel project
+        ends up with after importing them from .env.example).
+        """
         if self.database_url or self.db_host:
             return self
 
-        raw = dotenv_values(ENV_PATH) if ENV_PATH.exists() else {}
+        raw: dict[str, Any] = {}
+        if ENV_PATH.exists():
+            raw.update(dotenv_values(ENV_PATH))
+
+        # Only trusted as a complete set: "user" and "password" are plausible
+        # stray variables, while a bare "host" alongside them is not, so
+        # requiring both means a lone system variable can never leak in.
+        bare = {k: os.environ[k] for k in self._BARE_KEYS if os.environ.get(k)}
+        if "host" in bare and "password" in bare:
+            raw.update(bare)
+
         mapping = {
             "db_host": ("host",),
             "db_port": ("port",),
