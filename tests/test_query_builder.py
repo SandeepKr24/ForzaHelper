@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from forzahelper.models import CarFilters, SearchRequest, Sort
-from forzahelper.search import build_order_by, build_search_sql, build_where
+from forzahelper.search import build_order_by, build_search_sql, build_where, fold
 
 
 def test_no_filters_produces_no_where_clause():
@@ -103,3 +103,45 @@ def test_limit_is_capped_by_settings():
 def test_active_reports_only_set_filters():
     filters = CarFilters(year_min=2000, drivetrain=["AWD"])
     assert filters.active() == {"year_min": 2000, "drivetrain": ["AWD"]}
+
+
+# --------------------------------------------------------------- accent folding
+
+
+@pytest.mark.parametrize(
+    "typed,expected",
+    [
+        ("Huracan", "Huracan"),
+        ("Huracán", "Huracan"),
+        ("Coupé", "Coupe"),
+        ("Murciélago", "Murcielago"),
+        ("Mégane", "Megane"),
+        ("Sián", "Sian"),
+        # Accents beyond those present in the data are stripped too.
+        ("Citroën", "Citroen"),
+        ("Škoda", "Skoda"),
+        # Typographic quotes normalise to a plain apostrophe.
+        ("‘The Performance Truck’", "'The Performance Truck'"),
+        ("plain ascii", "plain ascii"),
+    ],
+)
+def test_fold_strips_accents_from_user_input(typed, expected):
+    assert fold(typed) == expected
+
+
+def test_query_is_folded_on_both_sides():
+    _, params = build_where(CarFilters(query="Huracán"))
+    assert params["query"] == "%Huracan%"
+
+
+def test_accented_columns_are_compared_folded():
+    clauses, params = build_where(CarFilters(model=["M4 Coupé"]))
+    assert clauses == ["lower(translate(model, %(fold_from)s, %(fold_to)s)) = ANY(%(model)s)"]
+    assert params["model"] == ["m4 coupe"]
+
+
+def test_ascii_only_columns_skip_the_fold():
+    """Folding costs nothing here, so columns without accents stay simple."""
+    clauses, params = build_where(CarFilters(country=["Japan"]))
+    assert clauses == ["lower(country) = ANY(%(country)s)"]
+    assert "fold_from" not in params

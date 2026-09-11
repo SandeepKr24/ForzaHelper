@@ -12,6 +12,7 @@ The only string interpolation into SQL is of literals defined in this module.
 from __future__ import annotations
 
 import time
+import unicodedata
 from datetime import datetime, timezone
 from typing import Any
 
@@ -42,7 +43,9 @@ SELECT_COLUMNS = (
     "pi_class",
     "horsepower",
     "torque_lbft",
+    "torque_nm",
     "weight_lb",
+    "weight_kg",
     "drivetrain",
     "hp_per_tonne",
     "price_per_hp",
@@ -70,6 +73,7 @@ _RANGE_FILTERS: dict[str, tuple[str, str]] = {
 _CATEGORICAL_FILTERS: dict[str, str] = {
     "drivetrain": "drivetrain",
     "pi_class": "pi_class",
+    "model": "model",
     "country": "country",
     "car_type": "car_type",
     "make": "make",
@@ -82,13 +86,50 @@ _SORT_COLUMNS: dict[str, str] = {
     "pi": "pi",
     "year": "year",
     "weight_lb": "weight_lb",
+    "weight_kg": "weight_kg",
     "torque_lbft": "torque_lbft",
+    "torque_nm": "torque_nm",
     "hp_per_tonne": "hp_per_tonne",
     "price_per_hp": "price_per_hp",
     "full_name": "full_name",
+    "make": "make",
+    "model": "model",
+    "car_type": "car_type",
+    "pi_class": "pi_class",
+    "country": "country",
+    "rarity": "rarity",
+    "drivetrain": "drivetrain",
 }
 
 _LIKE_ESCAPE = "ESCAPE '\\'"
+
+# Accent folding -------------------------------------------------------------
+# Car names carry accents ("Huracan" is stored as "Huracán") and typographic
+# quotes, but nobody types them. Both sides of a text comparison are folded to
+# ASCII so "Huracan" matches "Huracán" and "Coupe" matches "Coupe".
+#
+# The SQL side uses translate() with the characters that actually occur in the
+# data, passed as bound parameters -- this needs no database extension and no
+# migration. The Python side strips any accent the user types, not just these.
+_SQL_FOLD_FROM = "áéÁÉ‘’"
+_SQL_FOLD_TO = "aeAE''"
+
+# Only these columns contain non-ASCII characters in the dataset.
+_ACCENTED_COLUMNS = {"model", "full_name"}
+
+assert len(_SQL_FOLD_FROM) == len(_SQL_FOLD_TO)
+
+
+def _folded(column: str) -> str:
+    """SQL expression folding `column` to ASCII."""
+    return f"translate({column}, %(fold_from)s, %(fold_to)s)"
+
+
+def fold(value: str) -> str:
+    """Strip accents and normalise quotes in user input."""
+    decomposed = unicodedata.normalize("NFD", value)
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return stripped.replace("‘", "'").replace("’", "'")
 
 
 def _escape_like(value: str) -> str:
@@ -115,7 +156,15 @@ def build_where(filters: CarFilters) -> tuple[list[str], dict[str, Any]]:
 
     for field, column in _CATEGORICAL_FILTERS.items():
         values = getattr(filters, field)
-        if values:
+        if not values:
+            continue
+        if column in _ACCENTED_COLUMNS:
+            # Fold both sides so a dropdown value and a hand-typed one both hit.
+            params[field] = [fold(v).strip().lower() for v in values]
+            params.setdefault("fold_from", _SQL_FOLD_FROM)
+            params.setdefault("fold_to", _SQL_FOLD_TO)
+            add(column, f"lower({_folded(column)}) = ANY(%({field})s)")
+        else:
             params[field] = [v.strip().lower() for v in values]
             add(column, f"lower({column}) = ANY(%({field})s)")
 
@@ -131,8 +180,10 @@ def build_where(filters: CarFilters) -> tuple[list[str], dict[str, Any]]:
         )
 
     if filters.query:
-        params["query"] = f"%{_escape_like(filters.query.strip())}%"
-        clauses.append(f"full_name ILIKE %(query)s {_LIKE_ESCAPE}")
+        params["query"] = f"%{_escape_like(fold(filters.query.strip()))}%"
+        params.setdefault("fold_from", _SQL_FOLD_FROM)
+        params.setdefault("fold_to", _SQL_FOLD_TO)
+        clauses.append(f"{_folded('full_name')} ILIKE %(query)s {_LIKE_ESCAPE}")
 
     return clauses, params
 
@@ -304,7 +355,15 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
     relation = settings.cars_relation
 
     categorical: dict[str, list[str]] = {}
-    for column in ("drivetrain", "pi_class", "country", "car_type", "make", "rarity"):
+    for column in (
+        "drivetrain",
+        "pi_class",
+        "country",
+        "car_type",
+        "make",
+        "model",
+        "rarity",
+    ):
         rows = fetch_all(
             f"SELECT DISTINCT {column} AS value FROM {relation}"
             f" WHERE {column} IS NOT NULL ORDER BY value"
@@ -362,6 +421,28 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
         "null_counts": null_counts(settings),
     }
     return _filter_metadata_cache
+
+
+def models_for_make(
+    make: str | None = None, settings: Settings | None = None
+) -> list[str]:
+    """Model names, optionally narrowed to one manufacturer.
+
+    Backs the Model dropdown, which is repopulated when the Make changes.
+    """
+    settings = settings or get_settings()
+    if make:
+        rows = fetch_all(
+            f"SELECT DISTINCT model AS value FROM {settings.cars_relation}"
+            f" WHERE model IS NOT NULL AND lower(make) = %(make)s ORDER BY value",
+            {"make": make.strip().lower()},
+        )
+    else:
+        rows = fetch_all(
+            f"SELECT DISTINCT model AS value FROM {settings.cars_relation}"
+            f" WHERE model IS NOT NULL ORDER BY value"
+        )
+    return [r["value"] for r in rows]
 
 
 def _as_number(value: Any) -> float | int | None:

@@ -9,7 +9,13 @@ from __future__ import annotations
 import pytest
 
 from forzahelper.models import CarFilters, SearchRequest
-from forzahelper.search import build_search_sql, build_where, search_cars
+from forzahelper.search import (
+    _SQL_FOLD_FROM,
+    _SQL_FOLD_TO,
+    build_search_sql,
+    build_where,
+    search_cars,
+)
 
 from .conftest import requires_db
 
@@ -28,10 +34,17 @@ def test_free_text_payload_stays_a_parameter(payload):
     clauses, params = build_where(CarFilters(query=payload))
 
     # The statement is a fixed string regardless of what the payload contains.
-    assert clauses == ["full_name ILIKE %(query)s ESCAPE '\\'"]
+    # full_name is accent-folded, and even the fold table is bound rather than
+    # inlined, so no part of this clause varies with user input.
+    assert clauses == [
+        "translate(full_name, %(fold_from)s, %(fold_to)s) ILIKE %(query)s ESCAPE '\\'"
+    ]
 
-    # The payload exists only as a bound value, carried in params.
-    assert set(params) == {"query"}
+    # The payload exists only as a bound value. The other two parameters are
+    # fixed constants from search.py, never anything the caller supplied.
+    assert set(params) == {"query", "fold_from", "fold_to"}
+    assert params["fold_from"] == _SQL_FOLD_FROM
+    assert params["fold_to"] == _SQL_FOLD_TO
     sql, count_sql, _ = build_search_sql(SearchRequest(filters=CarFilters(query=payload)))
     for fragment in ("DROP", "DELETE", "UNION", "TRUNCATE", "--"):
         assert fragment not in sql.upper()

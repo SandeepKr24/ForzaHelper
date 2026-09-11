@@ -30,7 +30,13 @@ from .models import (
     SearchResponse,
     Sort,
 )
-from .search import compare_cars, filter_metadata, get_car, search_cars
+from .search import (
+    compare_cars,
+    filter_metadata,
+    get_car,
+    models_for_make,
+    search_cars,
+)
 
 if TYPE_CHECKING:
     from .chat.extraction import ConstraintExtractor
@@ -136,9 +142,22 @@ def metadata(settings: SettingsDep) -> dict[str, Any]:
 
 
 @app.get("/api/filters")
-def filters(settings: SettingsDep) -> dict[str, Any]:
-    """Distinct values and numeric bounds, read from the database."""
-    return filter_metadata(settings)
+def filters(
+    settings: SettingsDep,
+    make: Annotated[str | None, Query(max_length=80)] = None,
+) -> dict[str, Any]:
+    """Distinct values and numeric bounds, read from the database.
+
+    Pass `make` to narrow the `model` list to one manufacturer, which is what
+    the explorer's Model dropdown needs when a Make is chosen.
+    """
+    metadata = dict(filter_metadata(settings))
+    if make:
+        categorical = dict(metadata["categorical"])
+        categorical["model"] = models_for_make(make, settings)
+        metadata["categorical"] = categorical
+        metadata["scoped_to_make"] = make
+    return metadata
 
 
 # ---------------------------------------------------------------------- cars
@@ -154,6 +173,7 @@ def list_cars(
     car_type: Annotated[list[str] | None, Query()] = None,
     drivetrain: Annotated[list[str] | None, Query()] = None,
     pi_class: Annotated[list[str] | None, Query()] = None,
+    model: Annotated[list[str] | None, Query()] = None,
     rarity: Annotated[list[str] | None, Query()] = None,
     year_min: int | None = None,
     year_max: int | None = None,
@@ -173,6 +193,7 @@ def list_cars(
             car_type=car_type,
             drivetrain=drivetrain,
             pi_class=pi_class,
+            model=model,
             rarity=rarity,
             year_min=year_min,
             year_max=year_max,
@@ -210,7 +231,15 @@ def read_car(car_id: str, settings: SettingsDep) -> CarResult:
 
 @app.post("/api/cars/search", response_model=SearchResponse)
 def search(request: SearchRequest, settings: SettingsDep) -> SearchResponse:
-    return search_cars(request, settings)
+    response = search_cars(request, settings)
+    if response.total == 0:
+        # Doc section 16: an empty result comes back with labelled alternatives,
+        # never with the original constraints silently loosened. find_relaxations
+        # calls search_cars directly, so this does not recurse.
+        from .interpret import find_relaxations
+
+        response.relaxed_results = find_relaxations(request.filters, request.sort)
+    return response
 
 
 class CompareRequest(BaseModel):

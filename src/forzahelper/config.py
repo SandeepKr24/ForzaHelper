@@ -46,8 +46,17 @@ class Settings(BaseSettings):
     default_tolerance_pct: float = 0.10
     min_tolerance_abs: float = 5.0
 
+    # Dev origins for the static frontend. Production origins come from
+    # FH_ALLOWED_ORIGINS; never widen this to "*" with real origins in play.
     allowed_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://localhost:8080",
+            "http://127.0.0.1:5500",
+            "http://localhost:5500",
+        ]
     )
     environment: str = "development"
 

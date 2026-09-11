@@ -490,40 +490,43 @@
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;supabaseUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;supabaseAnonKey&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;table&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;cars&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;sqlRpc&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;run_car_query&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Database&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Table&quot;}}">
-const T_DEFAULT = "cars";
-const Q = {
-  year: '"Year"', make: '"Make"', model: '"Model"', type: '"Type"', cls: '"Class"', pi: '"PI"',
-  country: '"Country"', price: '"Value (Cr)"', rarity: '"Rarity"', hp: '"Power (HP)"',
-  tqI: '"Torque (Imperial)"', tqM: '"Torque (Metric)"', wtI: '"Weight (Imperial)"', wtM: '"Weight (Metric)"',
-  dt: '"Drivetrain"', epos: '"Engine Pos."', pwI: '"Power to Weight (Imperial)"', pwM: '"Power to Weight (Metric)"',
-  source: '"Source"'
-};
+<script type="text/x-dc" data-dc-script data-props="{&quot;apiBaseUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;http://localhost:8000&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Backend&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Table&quot;}}">
+// Unit system. `field` is the backend sort field; `key` is the mapped row key.
 const UNITS = {
-  imperial: {tq: {col: Q.tqI, unit: "lb-ft"}, wt: {col: Q.wtI, unit: "lb"}, pw: {col: Q.pwI, unit: "hp/lb"}},
-  metric:   {tq: {col: Q.tqM, unit: "Nm"},    wt: {col: Q.wtM, unit: "kg"}, pw: {col: Q.pwM, unit: "hp/kg"}}
+  imperial: {tq: {key: "tq_i", field: "torque_lbft", unit: "lb-ft"},
+             wt: {key: "wt_i", field: "weight_lb", unit: "lb"},
+             pw: {key: "pw_i", unit: "hp/lb"}},
+  metric:   {tq: {key: "tq_m", field: "torque_nm", unit: "Nm"},
+             wt: {key: "wt_m", field: "weight_kg", unit: "kg"},
+             pw: {key: "pw_m", unit: "hp/kg"}}
 };
-const ID_SQL = "(" + Q.make + " || ' · ' || " + Q.model + " || ' · ' || coalesce(" + Q.year + "::text,''))";
-const SELECT_COLS = [
-  Q.year + " AS year", Q.make + " AS make", Q.model + " AS model", Q.type + " AS type",
-  Q.cls + " AS cls", Q.pi + " AS pi", Q.country + " AS country", Q.price + " AS price",
-  Q.rarity + " AS rarity", Q.hp + " AS hp", Q.tqI + " AS tq_i", Q.tqM + " AS tq_m",
-  Q.wtI + " AS wt_i", Q.wtM + " AS wt_m", Q.dt + " AS dt", Q.epos + " AS epos",
-  Q.pwI + " AS pw_i", Q.pwM + " AS pw_m", Q.source + " AS source", ID_SQL + " AS id"
-].join(",\n       ");
+const LB_PER_KG = 2.20462, LBFT_PER_NM = 0.737562;
 const PAGE = 12;
 const ACCENT = "var(--accent)";
 const MONO = "'IBM Plex Mono',monospace";
 const num = (n) => n == null ? null : Number(n).toLocaleString("en-US");
 const UNK = "Unknown / Not verified";
-const esc = (v) => String(v).replace(/'/g, "''");
 const nn = (v) => v === "" || v == null ? null : Number(String(v).replace(/[^0-9.]/g, ""));
 
+// Which single constraint is binding, taken from the backend's relaxation
+// suggestions (it only proposes changes it has verified would match).
+const diagnosisOf = (d) => {
+  const rr = (d && d.relaxed_results) || [];
+  if (!rr.length) return null;
+  return rr.slice().sort((a, b) => b.count - a.count).map(r => ({label: r.description, n: r.count}))[0];
+};
+
+// Backend CarResult -> the shape this UI renders.
 const mapRow = (r) => ({
-  id: r.id, make: r.make, model: r.model, year: r.year, price: r.price, pi: r.pi, cls: r.cls,
-  type: r.type, country: r.country, rarity: r.rarity, hp: r.hp,
-  tq_i: r.tq_i, tq_m: r.tq_m, wt_i: r.wt_i, wt_m: r.wt_m, pw_i: r.pw_i, pw_m: r.pw_m,
-  dt: r.dt, epos: r.epos, source: r.source
+  id: r.id, make: r.make, model: r.model, year: r.year, price: r.price_cr,
+  pi: r.pi, cls: r.pi_class, type: r.car_type, country: r.country, rarity: r.rarity,
+  hp: r.horsepower,
+  tq_i: r.torque_lbft, tq_m: r.torque_nm,
+  wt_i: r.weight_lb, wt_m: r.weight_kg,
+  pw_i: (r.horsepower != null && r.weight_lb) ? r.horsepower / r.weight_lb : null,
+  pw_m: (r.horsepower != null && r.weight_kg) ? r.horsepower / r.weight_kg : null,
+  dt: r.drivetrain,
+  source: (r.acquisition_methods || []).join(", ") || null
 });
 
 const COLS = [
@@ -539,21 +542,20 @@ const COLS = [
   {key:"tq",label:"Torque",align:"right"},
   {key:"wt",label:"Weight",align:"right"},
   {key:"dt",label:"Drivetrain",align:"left"},
-  {key:"epos",label:"Engine pos.",align:"left"},
   {key:"pw",label:"Power/weight",align:"right"},
   {key:"source",label:"Source",align:"left"}
 ];
 const DEFAULT_COLS = ["car","year","type","cls","pi","price","hp","tq","wt","dt"];
-const EMPTY_F = {make:"", model:"", cls:"", piMin:"", piMax:"", dt:"", type:"", country:"", rarity:"", epos:"", yearMin:"", yearMax:"", priceMin:"", priceMax:"", hpMin:"", hpMax:"", wtMin:"", wtMax:"", tqMin:"", tqMax:"", q:""};
-const EMPTY_CAR = {id:"",make:"",model:"—",year:null,price:null,pi:null,cls:"—",hp:null,tq_i:null,tq_m:null,wt_i:null,wt_m:null,pw_i:null,pw_m:null,dt:"—",type:null,country:null,rarity:null,epos:null,source:null};
+const EMPTY_F = {make:"", model:"", cls:"", piMin:"", piMax:"", dt:"", type:"", country:"", rarity:"", yearMin:"", yearMax:"", priceMin:"", priceMax:"", hpMin:"", hpMax:"", wtMin:"", wtMax:"", tqMin:"", tqMax:"", q:""};
+const EMPTY_CAR = {id:"",make:"",model:"—",year:null,price:null,pi:null,cls:"—",hp:null,tq_i:null,tq_m:null,wt_i:null,wt_m:null,pw_i:null,pw_m:null,dt:"—",type:null,country:null,rarity:null,source:null};
 
 class Component extends DCLogic {
   state = {
     view: "explorer", detailId: null, compare: [], searchText: "", chatDraft: "", messages: [],
     columns: DEFAULT_COLS.slice(), columnsOpen: false, sortKey: "pi", sortDir: -1, page: 0,
-    rows: [], total: 0, status: "loading", errorMsg: "", sql: "", diagnosis: undefined,
+    rows: [], total: 0, status: "loading", errorMsg: "", sql: "", diagnosis: undefined, relaxed: [],
     sqlOpen: false, copied: false, theme: "dark",
-    facets: {make:[], model:[], type:[], country:[], rarity:[], epos:[], dt:[]},
+    facets: {make:[], model:[], type:[], country:[], rarity:[], dt:[]},
     bounds: {pi: [100, 999]}, filtersOpen: false, qDraft: "", units: "imperial",
     f: Object.assign({}, EMPTY_F)
   };
@@ -603,7 +605,7 @@ class Component extends DCLogic {
 
   loadKey() {
     const s = this.state, p = this.props;
-    return JSON.stringify([s.f, s.sortKey, s.sortDir, s.page, s.units, this.cfg("supabaseUrl"), this.cfg("supabaseAnonKey"), this.table(), this.cfg("sqlRpc")]);
+    return JSON.stringify([s.f, s.sortKey, s.sortDir, s.page, s.units, this.cfg("apiBaseUrl")]);
   }
 
   componentDidUpdate() {
@@ -615,146 +617,183 @@ class Component extends DCLogic {
     const g = (typeof window !== "undefined" && window.FH6_CONFIG) || {};
     return this.props[k] || g[k] || "";
   }
-  table() { return this.cfg("table") || T_DEFAULT; }
-  configured() { return !!(this.cfg("supabaseUrl") && this.cfg("supabaseAnonKey")); }
+  apiBase() { return String(this.cfg("apiBaseUrl") || "http://localhost:8000").replace(/\/$/, ""); }
+  configured() { return !!this.apiBase(); }
 
-  runSql(sql) {
-    if (!this.configured()) return Promise.resolve({ok: false, kind: "unconfigured", message: "No Supabase project is connected. Set supabaseUrl and supabaseAnonKey to execute this query.", rows: []});
-    const url = String(this.cfg("supabaseUrl")).replace(/\/$/, "");
-    const key = this.cfg("supabaseAnonKey");
-    const rpc = this.cfg("sqlRpc") || "run_car_query";
-    return fetch(url + "/rest/v1/rpc/" + rpc, {
-      method: "POST",
-      headers: {"Content-Type": "application/json", apikey: key, Authorization: "Bearer " + key},
-      body: JSON.stringify({query: sql})
-    }).then(r => r.text().then(t => {
-      if (!r.ok) { const e = new Error("HTTP " + r.status + " — " + (t || r.statusText).slice(0, 240)); e.kind = "error"; throw e; }
-      return t ? JSON.parse(t) : [];
-    })).then(d => ({ok: true, rows: Array.isArray(d) ? d : (d && Array.isArray(d.rows) ? d.rows : [])}))
-      .catch(err => { const e = err instanceof Error ? err : new Error(String((err && err.message) || err)); return {ok: false, kind: e.kind || "error", message: e.message, rows: []}; });
+  // Single entry point to the backend. No credentials and no SQL leave the
+  // browser: it sends structured filters and receives structured rows.
+  api(path, opts) {
+    if (!this.configured()) {
+      return Promise.resolve({ok: false, kind: "unconfigured", message: "No API is connected. Set apiBaseUrl in config.js.", data: null});
+    }
+    const o = opts || {};
+    const init = {method: o.method || "GET", headers: {"Content-Type": "application/json"}};
+    if (o.body !== undefined) init.body = JSON.stringify(o.body);
+    return fetch(this.apiBase() + path, init)
+      .then(r => r.text().then(t => {
+        const parsed = t ? JSON.parse(t) : null;
+        if (!r.ok) {
+          const detail = parsed && parsed.error ? parsed.error.message : (r.statusText || "");
+          const e = new Error("HTTP " + r.status + ": " + String(detail).slice(0, 240));
+          e.kind = r.status === 404 ? "notfound" : "error";
+          throw e;
+        }
+        return parsed;
+      }))
+      .then(d => ({ok: true, data: d}))
+      .catch(err => {
+        const e = err instanceof Error ? err : new Error(String((err && err.message) || err));
+        return {ok: false, kind: e.kind || "error", message: e.message, data: null};
+      });
   }
 
   // ---- constraints → SQL --------------------------------------------------
   u() { return UNITS[this.state.units] || UNITS.imperial; }
 
-  predicates(f) {
-    const p = [];
-    const u = this.u();
-    const add = (k, label, sql) => p.push({k, label, sql});
-    if (f.q) add("q", 'text "' + f.q + '"', "(" + Q.make + " || ' ' || " + Q.model + " || ' ' || coalesce(" + Q.type + ",'')) ILIKE '%" + esc(f.q) + "%'");
-    if (f.make) add("make", "make " + f.make, Q.make + " = '" + esc(f.make) + "'");
-    if (f.model) add("model", "model " + f.model, Q.model + " = '" + esc(f.model) + "'");
-    if (f.cls) add("cls", "class " + f.cls, Q.cls + " = '" + esc(f.cls) + "'");
-    if (f.dt) add("dt", "drivetrain " + f.dt, Q.dt + " = '" + esc(f.dt) + "'");
-    if (f.type) add("type", "type " + f.type, Q.type + " = '" + esc(f.type) + "'");
-    if (f.country) add("country", "country " + f.country, Q.country + " = '" + esc(f.country) + "'");
-    if (f.rarity) add("rarity", "rarity " + f.rarity, Q.rarity + " = '" + esc(f.rarity) + "'");
-    if (f.epos) add("epos", "engine " + f.epos, Q.epos + " = '" + esc(f.epos) + "'");
-    const rng = (key, col, unitLabel, unit) => {
-      const min = nn(f[key + "Min"]), max = nn(f[key + "Max"]);
-      if (min != null) add(key + "Min", unitLabel + " ≥ " + num(min) + unit, col + " >= " + min);
-      if (max != null) add(key + "Max", unitLabel + " ≤ " + num(max) + unit, col + " <= " + max);
+  // UI filter state -> backend CarFilters. Single-choice dropdowns become
+  // one-element lists; metric slider values are converted to the imperial
+  // columns the backend filters on.
+  apiFilters(f) {
+    const out = {};
+    const one = (k, v) => { if (v) out[k] = [v]; };
+    const rng = (lo, hi, kLo, kHi, conv) => {
+      const a = nn(f[lo]), b = nn(f[hi]);
+      if (a != null) out[kLo] = Math.floor(conv ? conv(a) : a);
+      if (b != null) out[kHi] = Math.ceil(conv ? conv(b) : b);
     };
-    rng("pi", Q.pi, "PI", "");
-    rng("year", Q.year, "year", "");
-    rng("price", Q.price, "value", " Cr");
-    rng("hp", Q.hp, "power", " hp");
-    rng("wt", u.wt.col, "weight", " " + u.wt.unit);
-    rng("tq", u.tq.col, "torque", " " + u.tq.unit);
-    return p;
+    one("make", f.make); one("model", f.model); one("pi_class", f.cls);
+    one("drivetrain", f.dt); one("car_type", f.type);
+    one("country", f.country); one("rarity", f.rarity);
+    rng("piMin", "piMax", "pi_min", "pi_max");
+    rng("yearMin", "yearMax", "year_min", "year_max");
+    rng("priceMin", "priceMax", "price_cr_min", "price_cr_max");
+    rng("hpMin", "hpMax", "horsepower_min", "horsepower_max");
+    const metric = this.metric();
+    rng("wtMin", "wtMax", "weight_lb_min", "weight_lb_max", metric ? (v) => v * LB_PER_KG : null);
+    rng("tqMin", "tqMax", "torque_lbft_min", "torque_lbft_max", metric ? (v) => v * LBFT_PER_NM : null);
+    if (f.q) out.query = f.q;
+    return out;
   }
 
-  sortSql(key) {
+  // backend CarFilters -> UI filter state, so chat-derived filters render as
+  // chips and can be edited in the explorer.
+  fromApiFilters(af) {
+    const a = af || {};
+    const first = (v) => Array.isArray(v) ? (v[0] || "") : (v || "");
+    const str = (v) => v == null ? "" : String(v);
+    return Object.assign({}, EMPTY_F, {
+      make: first(a.make), model: first(a.model), cls: first(a.pi_class),
+      dt: first(a.drivetrain), type: first(a.car_type),
+      country: first(a.country), rarity: first(a.rarity),
+      piMin: str(a.pi_min), piMax: str(a.pi_max),
+      yearMin: str(a.year_min), yearMax: str(a.year_max),
+      priceMin: str(a.price_cr_min), priceMax: str(a.price_cr_max),
+      hpMin: str(a.horsepower_min), hpMax: str(a.horsepower_max),
+      q: str(a.query)
+    });
+  }
+
+  // Removable chips describing the active filters, built from UI state.
+  activeChips(f) {
+    const out = [];
+    const add = (k, label) => { if (f[k]) out.push({k: k, label: label}); };
+    if (f.q) out.push({k: "q", label: 'text "' + f.q + '"'});
+    add("make", "make " + f.make);
+    add("model", "model " + f.model);
+    add("cls", "class " + f.cls);
+    add("dt", "drivetrain " + f.dt);
+    add("type", "type " + f.type);
+    add("country", "country " + f.country);
+    add("rarity", "rarity " + f.rarity);
     const u = this.u();
-    const m = {car: Q.make + ", " + Q.model, year: Q.year, type: Q.type, cls: Q.cls, pi: Q.pi,
-      country: Q.country, price: Q.price, rarity: Q.rarity, hp: Q.hp, dt: Q.dt, epos: Q.epos,
-      source: Q.source, tq: u.tq.col, wt: u.wt.col, pw: u.pw.col};
-    return m[key] || Q.pi;
+    const rng = (key, label, unit) => {
+      const lo = nn(f[key + "Min"]), hi = nn(f[key + "Max"]);
+      if (lo != null) out.push({k: key + "Min", label: label + " >= " + num(lo) + unit});
+      if (hi != null) out.push({k: key + "Max", label: label + " <= " + num(hi) + unit});
+    };
+    rng("pi", "PI", "");
+    rng("year", "year", "");
+    rng("price", "value", " Cr");
+    rng("hp", "power", " hp");
+    rng("wt", "weight", " " + u.wt.unit);
+    rng("tq", "torque", " " + u.tq.unit);
+    return out;
   }
 
-  buildSql(f, o) {
-    const preds = this.predicates(f);
-    const where = preds.length ? "\nWHERE " + preds.map(p => p.sql).join("\n  AND ") : "";
-    if (o && o.count) return "SELECT count(*) AS n\nFROM " + this.table() + where + ";";
-    const col = this.sortSql(o.sortKey);
-    return "SELECT " + SELECT_COLS + "\nFROM " + this.table() + where +
-      "\nORDER BY " + col + " " + (o.dir === 1 ? "ASC" : "DESC") + " NULLS LAST" +
-      "\nLIMIT " + o.limit + " OFFSET " + o.offset + ";";
+  sortPayload(key, dir) {
+    const u = this.u();
+    const m = {car: "full_name", year: "year", type: "car_type", cls: "pi_class", pi: "pi",
+      country: "country", price: "price_cr", rarity: "rarity", hp: "horsepower",
+      dt: "drivetrain", source: "full_name", tq: u.tq.field, wt: u.wt.field, pw: "hp_per_tonne"};
+    return {field: m[key] || "pi", direction: dir === 1 ? "asc" : "desc"};
+  }
+
+  searchBody(f, o) {
+    return {filters: this.apiFilters(f), sort: this.sortPayload(o.sortKey, o.dir),
+            limit: o.limit, offset: o.offset};
   }
 
   load() {
     const s = this.state, f = s.f;
-    const sql = this.buildSql(f, {sortKey: s.sortKey, dir: s.sortDir, limit: PAGE, offset: s.page * PAGE});
+    const body = this.searchBody(f, {sortKey: s.sortKey, dir: s.sortDir, limit: PAGE, offset: s.page * PAGE});
     const token = ++this.reqToken;
     this._loadKey = this.loadKey();
-    this.setState({sql, status: "loading", errorMsg: "", diagnosis: undefined});
-    Promise.all([this.runSql(sql), this.runSql(this.buildSql(f, {count: true}))])
-      .then(([res, cntRes]) => {
-        if (token !== this.reqToken) return;
-        if (!res.ok) {
-          this.setState({rows: [], total: 0, status: res.kind === "unconfigured" ? "unconfigured" : "error", errorMsg: res.message || ""});
-          return;
-        }
-        const mapped = res.rows.map(mapRow);
-        mapped.forEach(c => { this.cache[c.id] = c; });
-        const cnt = cntRes.ok ? cntRes.rows : null;
-        const total = cnt && cnt[0] ? Number(cnt[0].n) : mapped.length;
-        this.setState({rows: mapped, total, status: "ok"});
-        if (!mapped.length) this.diagnose(f, (d) => this.setState({diagnosis: d}));
-      });
+    this.setState({sql: JSON.stringify(body, null, 2), status: "loading", errorMsg: "", diagnosis: undefined, relaxed: []});
+    this.api("/api/cars/search", {method: "POST", body}).then(res => {
+      if (token !== this.reqToken) return;
+      if (!res.ok) {
+        this.setState({rows: [], total: 0, status: res.kind === "unconfigured" ? "unconfigured" : "error", errorMsg: res.message || ""});
+        return;
+      }
+      const d = res.data || {};
+      const mapped = (d.results || []).map(mapRow);
+      mapped.forEach(c => { this.cache[c.id] = c; });
+      this.setState({rows: mapped, total: d.total || 0, status: "ok", diagnosis: diagnosisOf(d), relaxed: d.relaxed_results || []});
+    });
   }
 
+  // Facets and slider bounds come from one metadata call; the backend reads
+  // them from the data, so nothing here hard-codes a value list.
   loadFacets() {
     if (!this.configured()) return;
-    const t = this.table();
-    const one = (col) => this.runSql("SELECT DISTINCT " + col + " AS v\nFROM " + t + "\nWHERE " + col + " IS NOT NULL\nORDER BY 1;")
-      .then(res => res.ok ? res.rows.map(x => x.v) : []);
-    Promise.all([one(Q.make), one(Q.type), one(Q.country), one(Q.rarity), one(Q.epos), one(Q.dt)])
-      .then(([make, type, country, rarity, epos, dt]) =>
-        this.setState(prev => ({facets: Object.assign({}, prev.facets, {make, type, country, rarity, epos, dt})})));
+    this.api("/api/filters").then(res => {
+      if (!res.ok) return;
+      const d = res.data || {}, c = d.categorical || {}, r = d.ranges || {};
+      const metric = this.metric();
+      const band = (k) => {
+        const v = r[k];
+        return (v && v.min != null && v.max != null && v.max > v.min) ? [Math.floor(v.min), Math.ceil(v.max)] : null;
+      };
+      const scaled = (bd, factor) => bd ? [Math.floor(bd[0] / factor), Math.ceil(bd[1] / factor)] : null;
+      const b = {pi: band("pi") || [100, 999]};
+      const y = band("year"); if (y) b.year = y;
+      const pr = band("price_cr"); if (pr) b.price = pr;
+      const hp = band("horsepower"); if (hp) b.hp = hp;
+      const wt = band("weight_lb"); if (wt) b.wt = metric ? scaled(wt, LB_PER_KG) : wt;
+      const tq = band("torque_lbft"); if (tq) b.tq = metric ? scaled(tq, LBFT_PER_NM) : tq;
+      this.setState(prev => ({
+        facets: Object.assign({}, prev.facets, {
+          make: c.make || [], type: c.car_type || [], country: c.country || [],
+          rarity: c.rarity || [], dt: c.drivetrain || []
+        }),
+        bounds: b
+      }));
+    });
     this.loadModels(this.state.f.make);
-    this.loadBounds();
   }
 
   loadModels(make) {
     if (!this.configured()) return;
-    const where = make ? "\nWHERE " + Q.model + " IS NOT NULL AND " + Q.make + " = '" + esc(make) + "'" : "\nWHERE " + Q.model + " IS NOT NULL";
-    this.runSql("SELECT DISTINCT " + Q.model + " AS v\nFROM " + this.table() + where + "\nORDER BY 1;")
-      .then(res => this.setState(prev => ({facets: Object.assign({}, prev.facets, {model: res.ok ? res.rows.map(x => x.v) : []})})));
-  }
-
-  loadBounds() {
-    if (!this.configured()) return;
-    const u = this.u();
-    const cols = [["year", Q.year], ["price", Q.price], ["hp", Q.hp], ["wt", u.wt.col], ["tq", u.tq.col]];
-    const sql = "SELECT " + cols.map(([k, c]) => "min(" + c + ") AS " + k + "_lo, max(" + c + ") AS " + k + "_hi").join(",\n       ") +
-      "\nFROM " + this.table() + ";";
-    this.runSql(sql).then(res => {
-      if (!res.ok || !res.rows[0]) return;
-      const r = res.rows[0], b = {};
-      cols.forEach(([k]) => {
-        const lo = Number(r[k + "_lo"]), hi = Number(r[k + "_hi"]);
-        if (isFinite(lo) && isFinite(hi) && hi > lo) b[k] = [Math.floor(lo), Math.ceil(hi)];
-      });
-      b.pi = [100, 999];
-      this.setState({bounds: b});
+    const qs = make ? "?make=" + encodeURIComponent(make) : "";
+    this.api("/api/filters" + qs).then(res => {
+      const c = res.ok ? ((res.data || {}).categorical || {}) : {};
+      this.setState(prev => ({facets: Object.assign({}, prev.facets, {model: c.model || []})}));
     });
   }
 
-  diagnose(f, cb) {
-    const preds = this.predicates(f);
-    if (!preds.length || !this.configured()) { cb(null); return; }
-    Promise.all(preds.map(p => {
-      const relaxed = Object.assign({}, f); relaxed[p.k] = "";
-      return this.runSql(this.buildSql(relaxed, {count: true}))
-        .then(res => res.ok ? {label: p.label, n: res.rows[0] ? Number(res.rows[0].n) : 0} : null);
-    })).then(list => {
-      const ok = list.filter(Boolean);
-      if (!ok.length) { cb(null); return; }
-      ok.sort((a, b) => b.n - a.n);
-      cb(ok[0]);
-    });
-  }
+  // Bounds arrive with the facets; the unit toggle just refetches them.
+  loadBounds() { this.loadFacets(); }
+
 
   // ---- navigation ---------------------------------------------------------
   syncUrl(f, view) {
@@ -776,8 +815,18 @@ class Component extends DCLogic {
   }
 
   heroSearch = (text) => {
-    const parsed = this.parse(text || "");
-    this.setF(parsed.f);
+    const q = String(text || "").trim();
+    if (q) {
+      // The backend interprets the sentence and returns resolved filters.
+      this.api("/api/chat", {method: "POST", body: {message: q, limit: 1}}).then(res => {
+        if (res.ok && res.data) {
+          this.conversation = res.data.conversation || null;
+          this.setF(this.fromApiFilters(res.data.filters));
+        } else {
+          this.setF(Object.assign({}, EMPTY_F, {q: q}));
+        }
+      });
+    }
     const hero = document.getElementById("fh6-hero");
     const doc = document.scrollingElement || document.documentElement;
     if (!hero || !doc) return;
@@ -799,80 +848,65 @@ class Component extends DCLogic {
     this.setState({compare: c});
   };
 
-  // ---- natural language → constraints ------------------------------------
-  parse(text) {
-    const t = " " + text.toLowerCase() + " ";
-    const f = Object.assign({}, EMPTY_F);
-    const notes = [];
-    const money = (str) => { const m = str.match(/([\d.]+)\s*(k|000)?/); if (!m) return null; let v = parseFloat(m[1]); if (m[2] || v < 1000) v = v * 1000; return Math.round(v); };
-
-    let m = t.match(/(?:under|below|less than|max|up to|<)\s*([\d.,]+\s*k?)\s*(?:cr|credits)?/);
-    if (m) { const v = money(m[1].replace(/,/g, "")); if (v) { f.priceMax = String(v); notes.push('"' + m[1].trim() + '" read as a hard ceiling of ' + num(v) + ' Cr ("Value (Cr)" <= ' + v + ")."); } }
-
-    m = t.match(/(\d{4})\s*(?:\+|or later|or newer|and newer|onwards)/);
-    if (m) f.yearMin = m[1];
-    if (!f.yearMin && /\b(?:from|after|since)\s*(\d{4})/.test(t)) f.yearMin = t.match(/\b(?:from|after|since)\s*(\d{4})/)[1];
-    if (/\b(90s|nineties)\b/.test(t)) { f.yearMin = "1990"; f.yearMax = "1999"; notes.push('"90s" read as model years 1990–1999.'); }
-    if (/\b(2000s)\b/.test(t) && !f.yearMin) { f.yearMin = "2000"; f.yearMax = "2009"; }
-
-    m = t.match(/(?:around|about|~|approximately|roughly)\s*([\d,]+)\s*(?:hp|bhp|horsepower)/);
-    if (m) { const hp = parseInt(m[1].replace(/,/g, ""), 10); f.hpMin = String(hp - 50); f.hpMax = String(hp + 50); notes.push('"Around ' + num(hp) + ' hp" was widened to a ±50 hp band (' + num(hp - 50) + '–' + num(hp + 50) + ' hp).'); }
-    else {
-      m = t.match(/([\d,]+)\s*\+?\s*(?:hp|bhp|horsepower)/);
-      if (m) {
-        const hp = parseInt(m[1].replace(/,/g, ""), 10);
-        if (/\+|more|plus|over|above|at least/.test(t)) f.hpMin = String(hp);
-        else { f.hpMin = String(hp - 50); f.hpMax = String(hp + 50); notes.push("A single horsepower figure was treated as a ±50 hp window."); }
-      }
-    }
-
-    if (/\bawd\b|all.?wheel|quattro/.test(t)) f.dt = "AWD";
-    else if (/\brwd\b|rear.?wheel/.test(t)) f.dt = "RWD";
-    else if (/\bfwd\b|front.?wheel/.test(t)) f.dt = "FWD";
-    if (f.dt) notes.push("Drivetrain matches the stock column, not drivetrain swaps.");
-
-    if (/\b(japanese|jdm|japan)\b/.test(t)) f.country = "Japan";
-    if (/\b(german|germany)\b/.test(t)) f.country = "Germany";
-    if (/\b(british|uk|england)\b/.test(t)) f.country = "UK";
-    if (/\b(american|usa|us muscle)\b/.test(t)) f.country = "USA";
-    if (/\bcheap|budget|affordable\b/.test(t) && !f.priceMax) { f.priceMax = "60000"; notes.push('"Cheap" was interpreted as under 60,000 CR — correct the ceiling if that is wrong.'); }
-    if (/lightweight|light\b/.test(t)) {
-      const lim = this.metric() ? "1270" : "2800";
-      f.wtMax = lim;
-      notes.push('"Lightweight" was interpreted as ' + num(Number(lim)) + " " + this.u().wt.unit + " or less.");
-    }
-    const cls = t.match(/\bclass\s*(d|c|b|a|s1|s2|r|x)\b/);
-    if (cls) f.cls = cls[1].toUpperCase();
-    const knownMakes = this.state.facets.make || [];
-    const hitMake = knownMakes.find(mk => t.includes(String(mk).toLowerCase()));
-    if (hitMake) f.make = hitMake;
-
-    if (!Object.keys(f).some(k => f[k])) { f.q = text.trim(); notes.push("No structured constraints were recognised, so this ran as an ILIKE search on Make, Model and Type."); }
-    notes.push("Only stock columns are queried — upgrades and tunes are not modelled.");
-    return {f, notes};
-  }
+  // ---- conversational search ----------------------------------------------
+  // The in-browser parser is gone: constraint extraction, the tolerance
+  // policy, ranking and no-result relaxation all live in the backend.
 
   send = () => {
     const text = this.state.chatDraft.trim();
     if (!text) return;
-    const parsed = this.parse(text);
-    const sql = this.buildSql(parsed.f, {sortKey: "pi", dir: -1, limit: 10, offset: 0});
     const id = "m" + (++this.msgId);
-    this.setState({chatDraft: "", messages: this.state.messages.concat([{kind: "user", text}, {kind: "result", id, parsed, sql, status: "running", rows: []}])});
-    this.runMsg(id, parsed.f, sql);
+    this.setState({
+      chatDraft: "",
+      messages: this.state.messages.concat([
+        {kind: "user", text},
+        {kind: "result", id, parsed: {f: Object.assign({}, EMPTY_F), notes: []}, status: "running", rows: []}
+      ])
+    });
+    this.askChat(id, text);
   };
 
-  runMsg(id, f, sql) {
-    this.patchMsg(id, {status: "running", errorMsg: ""});
-    this.runSql(sql).then(res => {
+  askChat(id, text) {
+    const body = {message: text, conversation: this.conversation || undefined, limit: 10};
+    this.patchMsg(id, {status: "running", errorMsg: "", request: JSON.stringify(body, null, 2)});
+    this.api("/api/chat", {method: "POST", body}).then(res => {
       if (!res.ok) {
         this.patchMsg(id, {status: res.kind === "unconfigured" ? "unconfigured" : "error", errorMsg: res.message || "", rows: []});
         return;
       }
-      const mapped = res.rows.map(mapRow);
+      const d = res.data || {};
+      this.conversation = d.conversation || null;
+      const mapped = (d.results || []).map(mapRow);
       mapped.forEach(c => { this.cache[c.id] = c; });
-      this.patchMsg(id, {status: "ok", rows: mapped});
-      if (!mapped.length) this.diagnose(f, (d) => this.patchMsg(id, {diagnosis: d}));
+      const notes = (d.interpretations || [])
+        .concat(d.clarification ? [d.clarification] : [])
+        .concat(d.warnings || []);
+      this.patchMsg(id, {
+        status: "ok",
+        rows: mapped,
+        parsed: {f: this.fromApiFilters(d.filters), notes},
+        summary: d.message || "",
+        diagnosis: diagnosisOf(d),
+        relaxed: d.relaxed_results || []
+      });
+    });
+  }
+
+  // Re-running a turn means re-running the search for filters the backend
+  // already resolved -- not re-interpreting the sentence.
+  rerunMsg(id, f) {
+    this.patchMsg(id, {status: "running", errorMsg: ""});
+    const body = this.searchBody(f, {sortKey: "pi", dir: -1, limit: 10, offset: 0});
+    this.patchMsg(id, {request: JSON.stringify(body, null, 2)});
+    this.api("/api/cars/search", {method: "POST", body}).then(res => {
+      if (!res.ok) {
+        this.patchMsg(id, {status: res.kind === "unconfigured" ? "unconfigured" : "error", errorMsg: res.message || "", rows: []});
+        return;
+      }
+      const d = res.data || {};
+      const mapped = (d.results || []).map(mapRow);
+      mapped.forEach(c => { this.cache[c.id] = c; });
+      this.patchMsg(id, {status: "ok", rows: mapped, diagnosis: diagnosisOf(d), relaxed: d.relaxed_results || []});
     });
   }
 
@@ -880,18 +914,15 @@ class Component extends DCLogic {
     this.setState(st => ({messages: st.messages.map(m => m.id === id ? Object.assign({}, m, patch) : m)}));
   }
 
-  relaxations(f, apply) {
-    const out = [];
-    const push = (label, patch) => out.push({label, apply: () => apply(patch)});
-    if (f.hpMin || f.hpMax) push("Widen horsepower band ±100 hp", {hpMin: f.hpMin ? String(Number(f.hpMin) - 50) : "", hpMax: f.hpMax ? String(Number(f.hpMax) + 50) : ""});
-    if (f.priceMax) push("Raise budget 25% → " + num(Math.round(Number(f.priceMax) * 1.25)) + " Cr", {priceMax: String(Math.round(Number(f.priceMax) * 1.25))});
-    if (f.dt) push("Drop the drivetrain filter", {dt: ""});
-    if (f.yearMin) push("Widen years to " + (Number(f.yearMin) - 10) + "+", {yearMin: String(Number(f.yearMin) - 10)});
-    if (f.cls) push("Drop the class filter", {cls: ""});
-    if (f.country) push("Drop the country filter", {country: ""});
-    if (!out.length) push("Clear all filters", Object.assign({}, EMPTY_F));
-    return out.slice(0, 4);
+  // Relaxation options are whatever the backend proved would actually match,
+  // rather than guesses made in the browser.
+  relaxations(msg, apply) {
+    return (msg.relaxed || []).slice(0, 4).map(rr => ({
+      label: rr.description,
+      apply: () => apply(this.fromApiFilters(rr.filters))
+    }));
   }
+
 
   // ---- cells --------------------------------------------------------------
   metric() { return this.state.units === "metric"; }
@@ -919,7 +950,6 @@ class Component extends DCLogic {
       case "tq": text = or(this.tqOf(c), num); span = mono; break;
       case "wt": text = or(this.wtOf(c), num); span = mono; break;
       case "dt": align = "left"; text = or(c.dt); span = badge("var(--soft)"); break;
-      case "epos": align = "left"; text = or(c.epos); span = badge("var(--muted)"); break;
       case "source": align = "left"; text = or(c.source); span = dim.replace("italic", "normal"); break;
       case "pw": text = or(this.pw(c), v => Number(v).toFixed(3)); span = mono; break;
       default: text = null; span = dim;
@@ -1002,16 +1032,16 @@ class Component extends DCLogic {
     };
     const kfmt = (v) => v >= 10000 ? Math.round(v / 1000) + "k" : num(v);
 
-    const chips = this.predicates(f).map(p => ({k: p.k, label: p.label, clear: () => this.setF({[p.k]: ""})}));
+    const chips = this.activeChips(f).map(p => ({k: p.k, label: p.label, clear: () => this.setF({[p.k]: ""})}));
     const bottleneckText = s.diagnosis === undefined ? "Measuring each constraint…"
       : s.diagnosis ? s.diagnosis.label + " — dropping it alone returns " + num(s.diagnosis.n) + " row" + (s.diagnosis.n === 1 ? "" : "s")
       : "Not determined — needs a connected database to count per constraint";
 
     const statusMap = {
-      loading: {label: "Querying " + this.table(), color: "var(--warn)", detail: "Supabase RPC · read-only"},
+      loading: {label: "Querying API", color: "var(--warn)", detail: "ForzaHelper backend · structured filters"},
       ok: {label: "Connected", color: "var(--ok)", detail: num(s.total) + " row" + (s.total === 1 ? "" : "s") + " matched · Postgres"},
       error: {label: "Query failed", color: ACCENT, detail: s.errorMsg},
-      unconfigured: {label: "Not connected", color: "var(--dim)", detail: "Supabase credentials not set"}
+      unconfigured: {label: "Not connected", color: "var(--dim)", detail: "apiBaseUrl not set"}
     };
     const st = statusMap[s.status] || statusMap.unconfigured;
 
@@ -1031,7 +1061,6 @@ class Component extends DCLogic {
       {label:"Weight (" + uCfg.wt.unit + ")", get: c => this.wtOf(c), kind:"low"},
       {label:"Power-to-weight (" + uCfg.pw.unit + ")", get: c => this.pw(c), kind:"high"},
       {label:"Drivetrain", get: c => c.dt, kind:"plain"},
-      {label:"Engine position", get: c => c.epos, kind:"plain"},
       {label:"Rarity", get: c => c.rarity, kind:"plain"},
       {label:"Car type", get: c => c.type, kind:"plain"}
     ];
@@ -1081,14 +1110,14 @@ class Component extends DCLogic {
       return {
         isUser: false, isResult: true, wrapStyle: "animation:fh6in .3s ease both",
         filters, notes: m.parsed.notes.map(t => ({text: t})),
-        sql: m.sql,
+        sql: m.request || "",
         statusLabel: ms.label,
         statusStyle: "font-family:" + MONO + ";font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:" + ms.color,
         copyLabel: "Copy",
-        copySql: () => { try { navigator.clipboard.writeText(m.sql); } catch (e) {} },
-        rerun: () => this.runMsg(m.id, pf, m.sql),
+        copySql: () => { try { navigator.clipboard.writeText(m.request || ""); } catch (e) {} },
+        rerun: () => this.rerunMsg(m.id, pf),
         isFailed: m.status === "error" || m.status === "unconfigured",
-        failTitle: m.status === "unconfigured" ? "Query not executed — no database connected" : "The database rejected this query",
+        failTitle: m.status === "unconfigured" ? "Not executed — no API connected" : "The request failed",
         failDetail: m.errorMsg || "",
         hasMatches: m.status === "ok" && matched.length > 0,
         isEmpty: m.status === "ok" && matched.length === 0,
@@ -1103,13 +1132,11 @@ class Component extends DCLogic {
           if (!bits.length) bits.push((c.cls || "?") + " " + (c.pi == null ? UNK : c.pi));
           return {car: (c.make || "") + " " + (c.model || ""), why: bits.join(" · ")};
         }),
-        bottleneck: mDiag === undefined ? "Measuring each constraint…" : mDiag ? mDiag.label + " — dropping it alone returns " + num(mDiag.n) + " row" + (mDiag.n === 1 ? "" : "s") : "Not determined — needs a connected database",
-        relax: this.relaxations(pf, (patch) => {
-          const nf = Object.assign({}, pf, patch);
-          const sql = this.buildSql(nf, {sortKey: "pi", dir: -1, limit: 10, offset: 0});
+        bottleneck: mDiag === undefined ? "Checking which constraint is binding" + String.fromCharCode(8230) : mDiag ? mDiag.label : "No single constraint explains the empty result.",
+        relax: this.relaxations(m, (nf) => {
           const id = "m" + (++this.msgId);
-          this.setState(prev => ({messages: prev.messages.concat([{kind: "result", id, parsed: {f: nf, notes: ["Constraint relaxed on request; the query was rebuilt and re-run rather than reinterpreted."]}, sql, status: "running", rows: []}])}));
-          this.runMsg(id, nf, sql);
+          this.setState(prev => ({messages: prev.messages.concat([{kind: "result", id, parsed: {f: nf, notes: ["Relaxed on request. The backend re-ran the search with one constraint changed."]}, status: "running", rows: []}])}));
+          this.rerunMsg(id, nf);
         }),
         editFilters: () => { this.setF(pf); this.setState({view: "explorer"}); }
       };
@@ -1157,8 +1184,7 @@ class Component extends DCLogic {
         mkSelect("type", "Type", s.facets.type),
         mkSelect("country", "Country", s.facets.country),
         mkSelect("dt", "Drivetrain", (s.facets.dt && s.facets.dt.length) ? s.facets.dt : ["AWD","RWD","FWD"]),
-        mkSelect("rarity", "Rarity", s.facets.rarity || []),
-        mkSelect("epos", "Engine pos.", s.facets.epos || [])
+        mkSelect("rarity", "Rarity", s.facets.rarity || [])
       ],
       sliderFilters: [
         mkSlider("pi", "PI", 1, (v) => String(v)),
@@ -1193,19 +1219,21 @@ class Component extends DCLogic {
       statusDotStyle: "width:8px;height:8px;border-radius:50%;background:" + st.color + ";flex:0 0 auto",
       sql: s.sql,
       sqlOpen: s.sqlOpen,
-      sqlToggleLabel: s.sqlOpen ? "Hide SQL" : "Show SQL",
+      sqlToggleLabel: s.sqlOpen ? "Hide request" : "Show request",
       toggleSql: () => this.setState({sqlOpen: !s.sqlOpen}),
       isLoading: s.status === "loading",
       hasResults: s.status === "ok" && rows.length > 0,
       noResults: s.status === "ok" && rows.length === 0,
       isDisconnected: s.status === "error" || s.status === "unconfigured",
-      connTitle: s.status === "error" ? "The database returned an error" : "No database connected",
+      connTitle: s.status === "error" ? "The API returned an error" : "No API connected",
       connBody: s.status === "error"
-        ? "The query below was sent to Supabase and rejected. Nothing is displayed from a failed query."
-        : "Cars are read live from a Supabase Postgres database; nothing is bundled into this frontend. Set the Supabase project URL and anon key, and expose a read-only SQL function, and every view here populates from real rows.",
-      connDetail: s.status === "error" ? s.errorMsg + "\n\n" + s.sql : "POST " + (this.cfg("supabaseUrl") || "<supabaseUrl>") + "/rest/v1/rpc/" + (this.cfg("sqlRpc") || "run_car_query") + "\n{ \"query\": \"" + (s.sql.split("\n")[0] || "SELECT …") + " …\" }\n\ntable: " + this.table(),
+        ? "The request below was rejected by the backend. Nothing is displayed from a failed request."
+        : "Cars are read live through the ForzaHelper API; nothing is bundled into this frontend and no database credentials are held here. Set apiBaseUrl in config.js and every view populates from real rows.",
+      connDetail: s.status === "error"
+        ? s.errorMsg + "\n\n" + s.sql
+        : "POST " + this.apiBase() + "/api/cars/search\n" + (s.sql || "{}"),
       bottleneck: bottleneckText,
-      relaxOptions: this.relaxations(f, (patch) => this.setF(patch)),
+      relaxOptions: this.relaxations({relaxed: s.relaxed}, (nf) => this.setF(nf)),
       columns: cols.map(c => ({
         label: colLabel(c), arrow: s.sortKey === c.key ? (s.sortDir === 1 ? " ↑" : " ↓") : "",
         style: this.thStyle(c.align, s.sortKey === c.key),
@@ -1233,14 +1261,14 @@ class Component extends DCLogic {
       detailSpecs: [
         {label: "Year", v: car.year}, {label: "PI", v: car.pi}, {label: "Class", v: car.cls},
         {label: "Type", v: car.type}, {label: "Country", v: car.country}, {label: "Rarity", v: car.rarity},
-        {label: "Drivetrain", v: car.dt}, {label: "Engine position", v: car.epos},
+        {label: "Drivetrain", v: car.dt},
         {label: "Torque", v: this.tqOf(car) == null ? null : num(this.tqOf(car)) + " " + uCfg.tq.unit},
         {label: "Weight", v: this.wtOf(car) == null ? null : num(this.wtOf(car)) + " " + uCfg.wt.unit},
         {label: "Power-to-weight", v: this.pw(car) == null ? null : Number(this.pw(car)).toFixed(3) + " " + uCfg.pw.unit},
         {label: "Value", v: car.price == null ? null : num(car.price) + " Cr"}
       ].map(x => ({label: x.label, value: specVal(x.v), style: specStyle(x.v)})),
       detailProvenance: [
-        {label: "Store", value: connected ? "Supabase Postgres · " + this.table() : "Not connected", color: "var(--soft)"},
+        {label: "Store", value: connected ? "ForzaHelper API · Supabase Postgres" : "Not connected", color: "var(--soft)"},
         {label: "Source", value: car.source || UNK, color: car.source ? "var(--soft)" : "var(--faint)"},
         {label: "Units shown", value: metric ? "Metric" : "Imperial", color: "var(--soft)"},
         {label: "Row key", value: car.id ? String(car.id) : UNK, color: "var(--dim)"}
@@ -1260,9 +1288,9 @@ class Component extends DCLogic {
 
       dbFacts: [
         {label: "Store", value: "Supabase Postgres"},
-        {label: "Table", value: this.table()},
-        {label: "Access", value: "read-only SQL function via /rest/v1/rpc/" + (this.cfg("sqlRpc") || "run_car_query")},
-        {label: "Status", value: connected ? st.label : "Credentials not set"},
+        {label: "API", value: this.apiBase()},
+        {label: "Access", value: "structured filters via POST /api/cars/search"},
+        {label: "Status", value: connected ? st.label : "apiBaseUrl not set"},
         {label: "Units", value: metric ? "Metric columns" : "Imperial columns"}
       ],
 

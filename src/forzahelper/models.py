@@ -20,10 +20,19 @@ SortField = Literal[
     "pi",
     "year",
     "weight_lb",
+    "weight_kg",
     "torque_lbft",
+    "torque_nm",
     "hp_per_tonne",
     "price_per_hp",
     "full_name",
+    "make",
+    "model",
+    "car_type",
+    "pi_class",
+    "country",
+    "rarity",
+    "drivetrain",
 ]
 SortDirection = Literal["asc", "desc"]
 
@@ -68,6 +77,7 @@ class CarFilters(BaseModel):
 
     drivetrain: list[str] | None = None
     pi_class: list[str] | None = None
+    model: list[str] | None = None
     country: list[str] | None = None
     car_type: list[str] | None = None
     make: list[str] | None = None
@@ -136,7 +146,9 @@ class CarResult(BaseModel):
     pi_class: str | None = None
     horsepower: int | None = None
     torque_lbft: int | None = None
+    torque_nm: float | None = None
     weight_lb: int | None = None
+    weight_kg: float | None = None
     drivetrain: str | None = None
     hp_per_tonne: float | None = None
     price_per_hp: float | None = None
