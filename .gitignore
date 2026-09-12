@@ -10,6 +10,10 @@
 # .env.example is intentionally NOT ignored - it documents the required keys
 # without containing any values.
 
+# Local verification harnesses (Playwright / OpenTelemetry). Useful to keep,
+# but they are developer scratch tooling, not part of the deployment.
+tools/
+
 # ---------------------------------------------------------------------------
 # Internal docs and notes (not for GitHub)
 # ---------------------------------------------------------------------------

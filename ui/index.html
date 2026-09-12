@@ -116,7 +116,7 @@
         <div style="max-width:900px;width:100%">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);margin-bottom:22px;animation:fh6rise .55s cubic-bezier(.2,.7,.3,1) both">Forza Horizon 6 · Car intelligence</div>
           <h1 style="margin:0;font-size:clamp(42px,6.6vw,92px);line-height:0.94;font-weight:700;letter-spacing:-0.03em;text-wrap:balance;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .07s both">Every car, every stat,<br>one query away.</h1>
-          <p style="margin:26px auto 0;max-width:56ch;color:var(--muted);font-size:17px;text-wrap:pretty;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .16s both">Filter the roster on stock specifications, compare candidates side by side, or describe what you want in plain language and let the Car Finder translate it into constraints.</p>
+          <p style="margin:26px auto 0;max-width:56ch;color:var(--muted);font-size:17px;text-wrap:pretty;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .16s both">Filter the roster on stock specifications, compare upto 4 cars side by side, or describe what you want in English and let the Car Finder work its magic.</p>
           <div style="display:flex;gap:0;margin:38px auto 0;max-width:720px;border:1px solid var(--l3);background:var(--input);animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .25s both">
             <input value="{{ searchText }}" onChange="{{ onSearchInput }}" onKeyDown="{{ onSearchKey }}" placeholder="e.g. AWD cars around 500 hp under 100k" style="flex:1;min-width:0;padding:18px 20px;background:transparent;border:0;color:var(--text);font-size:16px;outline:none" />
             <button onClick="{{ runSearch }}" style="padding:0 26px;background:var(--accent);border:0;color:var(--onAccent);font-size:14px;font-weight:600;letter-spacing:0.04em;cursor:pointer;white-space:nowrap" style-hover="background:var(--accentHi)">Find a car</button>
@@ -372,7 +372,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between">
         <div>
           <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Car Finder</h1>
-          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">Describe the car you want. Your request is sent to the ForzaHelper API, which resolves it into structured filters and runs them against Postgres. The filters it resolved are always shown, and results are never summarised away.</p>
+          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">So, what type of car are you looking for?</p>
         </div>
         <button onClick="{{ clearChat }}" style="padding:8px 12px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-size:12px;cursor:pointer" style-hover="color:var(--ink)">Clear session</button>
       </div>
@@ -390,7 +390,7 @@
               <div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:18px;border:1px solid var(--l2);background:var(--panel)">
                   <div>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Your filters</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Your request</div>
                     <sc-for list="{{ msg.filters }}" as="f" hint-placeholder-count="3">
                       <div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--l1);font-size:13px">
                         <span style="color:var(--dim)">{{ f.label }}</span>
@@ -399,7 +399,7 @@
                     </sc-for>
                   </div>
                   <div>
-                    <button onClick="{{ msg.editFilters }}" style="padding:6px 10px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent)">Correct in explorer filters</button>
+                    <button onClick="{{ msg.editFilters }}" style="padding:6px 10px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent)">Explorer</button>
                   </div>
                 </div>
 
@@ -477,8 +477,8 @@
 
   <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
     <main style="max-width:900px;margin:0 auto;padding:48px 20px 100px">
-      <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">About the data</h1>
-      <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Forza Horizon 6 launched on 19 May 2026 with more than 550 cars, and the roster keeps growing through Festival Playlist, Car Pass and Aftermarket additions. Nothing in this interface assumes a fixed car count — every list is driven by the current database version.</p>
+      <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">About ForzaHelper</h1>
+      <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Forza Horizon 6 launched on 19 May 2026 with more than 550 cars, and the roster keeps growing through Festival Playlist, Car Pass and Aftermarket additions. I try my best to keep the data accurate and up-to-date. But, there may be a slight delay between new car additions and their appearance on ForzaHelper.</p>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
         <sc-for list="{{ trustLevels }}" as="t" hint-placeholder-count="3">
           <div style="padding:20px;background:var(--panel);border:1px solid var(--l2)">
@@ -488,8 +488,8 @@
         </sc-for>
       </div>
       <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Where the data comes from</h2>
-      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">Cars live in a Supabase Postgres database, reached through the ForzaHelper API, and are never bundled into this frontend. Every table, filter option, count and comparison is the result of a live query, so the interface has no opinion about how many cars exist.</p>
-      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">The Car Finder sends your words to the ForzaHelper API, which resolves them into structured filters and builds the query itself; the browser never writes SQL and holds no database credentials. The filters and the exact request are shown with every answer, so a wrong result can be traced to a wrong constraint rather than guessed at. Filter and sort state in the explorer produces the same kind of request, visible under “Show request”.</p>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">I built a PostgreSQL database on Supabase to store and manage the car data for ForzaHelper. Since, there is no publically available official API for the car list, I created a partial dataset from the official car list on Forza.net. Afterwards, I manually added stats like- Power, Torque, Weight, etc from community-based forums as well as in game statistics. Yes, it was very exhausting.</p>
+      <!-- <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">...</p> -->
       <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft)">
         <sc-for list="{{ dbFacts }}" as="d" hint-placeholder-count="3">
           <div style="display:flex;gap:12px"><span style="color:var(--dim2);min-width:150px">{{ d.label }}</span><span>{{ d.value }}</span></div>
@@ -504,7 +504,7 @@
         <a href="https://forza.net/news/forza-horizon-6-car-culture" target="_blank" rel="noreferrer">Car culture and customization</a>
       </div>
       <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Units</h2>
-      <p style="margin:0;color:var(--muted);font-size:13px">Imperial and metric are separate columns in the database, not client-side conversions. The unit switch in the header changes which column is read for torque, weight and power-to-weight — in the table, in filters and sliders, and in sorting. Power is always in HP and value always in credits, so those never change. Weight and torque range filters reset when you switch, because their bounds belong to the other unit.</p>
+      <p style="margin:0;color:var(--muted);font-size:13px">Imperial(freedom) and metric(normal) are separate columns in my database, not client-side conversions. Just a practical joke lol. The unit switch in the header changes which column is read for torque, weight and power-to-weight in the table, in filters and sliders, and in sorting. Power is always in HP and value always in credits, so those never change. Weight and torque range filters reset when you switch, because their bounds belong to the other unit.</p>
     </main>
   </sc-if>
 </div>
@@ -1381,10 +1381,10 @@ class Component extends DCLogic {
       ],
 
       trustLevels: [
-        {badge: "VERIFIED IN-GAME", text: "Read from the game build and checked by an editor. Highest confidence.", color: "var(--ok)"},
+        {badge: "VERIFIED IN-GAME", text: "Read from the game build and checked by an editor (Myself ofcourse). Highest confidence.", color: "var(--ok)"},
         {badge: "OFFICIAL ROSTER", text: "Present on the official FH6 car list. Roster membership is authoritative; individual figures may still be pending.", color: "var(--ok)"},
         {badge: "COMMUNITY-SOURCED", text: "Contributed by players and cross-checked where possible. Shown with its last verified date.", color: "var(--warn)"},
-        {badge: "INFERRED / DERIVED", text: "Calculated from other columns — power-to-weight, for example. Always labelled ·derived and never presented as an in-game value.", color: "var(--soft)"}
+        {badge: "INFERRED / DERIVED", text: "Calculated from other columns — power-to-weight, for example. Always labelled ·derived and never presented as an in-game value. (you can switch units ingame obviously, I use Metric, and didnt really wanna do the whole thing again, so I just used formulas in excel to switch units.)", color: "var(--soft)"}
       ].map(t => ({badge: t.badge, text: t.text, badgeStyle: "display:inline-block;padding:3px 8px;border:1px solid " + t.color + ";font-family:" + MONO + ";font-size:10px;letter-spacing:0.1em;color:" + t.color}))
     };
   }
