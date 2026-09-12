@@ -54,6 +54,24 @@
   @keyframes fh6pulse { 0% { opacity:.35; } 50% { opacity:1; } 100% { opacity:.35; } }
   button, select, a, tr, input { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease; }
   button:active { transform: translateY(1px); }
+  /* Phones: the header's logo, nav and control cluster cannot fit on one row,
+     so they wrap. Tightening padding, gaps and control size keeps that to two
+     rows instead of four, and keeps the sticky header out of the way. */
+  @media (max-width: 560px) {
+    header { padding:6px 12px !important; gap:6px 10px !important; }
+    header nav button { padding-left:8px !important; padding-right:8px !important; }
+    header nav { gap:0 !important; }
+    /* The control cluster needs 383px of a 366px row; trimming the gap and the
+       button padding fits it on one line instead of two. */
+    header > div:last-child { gap:6px !important; }
+    header > div:last-child > button { padding-left:9px !important; padding-right:9px !important; }
+  }
+  @media (max-width: 400px) {
+    header nav button { font-size:13px !important; }
+    header > div:last-child { gap:4px !important; }
+    header > div:last-child button { padding-left:7px !important; padding-right:7px !important; }
+  }
+
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; } }
 </style>
 </helmet>
@@ -64,12 +82,12 @@
       <div style="width:22px;height:22px;background:var(--accent);transform:skewX(-12deg)"></div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap">Forza Helper</div>
     </div>
-    <nav style="display:flex;gap:2px;flex:0 1 auto;min-width:0;white-space:nowrap">
+    <nav style="display:flex;flex-wrap:wrap;gap:2px;flex:0 1 auto;min-width:0">
       <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="4">
         <button onClick="{{ item.go }}" style="{{ item.style }}" style-hover="color:var(--ink)">{{ item.label }}</button>
       </sc-for>
     </nav>
-    <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex:0 0 auto">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px 10px;margin-left:auto;flex:0 1 auto;min-width:0">
       <div style="display:flex;flex:0 0 auto;border:1px solid var(--l3)" role="group" aria-label="Measurement units">
         <sc-for list="{{ unitOptions }}" as="u" hint-placeholder-count="2">
           <button onClick="{{ u.onClick }}" style="{{ u.style }}">{{ u.label }}</button>
