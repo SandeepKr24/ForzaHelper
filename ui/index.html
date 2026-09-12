@@ -590,6 +590,14 @@ class Component extends DCLogic {
   }
 
   componentDidMount() {
+    // A reload should open on the hero, not wherever the reader happened to be
+    // scrolled to. Browsers restore the previous offset by default, so opt out
+    // and start at the top. Done before anything renders, to avoid a visible jump.
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      window.scrollTo(0, 0);
+    } catch (e) {}
+
     let theme = this.props.theme || "dark";
     try { const saved = localStorage.getItem("fh6-theme"); if (saved === "light" || saved === "dark") theme = saved; } catch (e) {}
     if (theme !== this.state.theme) this.setState({theme});
