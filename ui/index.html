@@ -83,7 +83,7 @@
       <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap">Forza Helper</div>
     </div>
     <nav style="display:flex;flex-wrap:wrap;gap:2px;flex:0 1 auto;min-width:0">
-      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="4">
+      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="2">
         <button onClick="{{ item.go }}" style="{{ item.style }}" style-hover="color:var(--ink)">{{ item.label }}</button>
       </sc-for>
     </nav>
@@ -115,7 +115,7 @@
             <button onClick="{{ runSearch }}" style="padding:0 26px;background:var(--accent);border:0;color:var(--onAccent);font-size:14px;font-weight:600;letter-spacing:0.04em;cursor:pointer;white-space:nowrap" style-hover="background:var(--accentHi)">Find a car</button>
           </div>
           <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:14px auto 0;max-width:720px;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .34s both">
-            <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="4">
+            <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="3">
               <button onClick="{{ ex.go }}" style="padding:5px 10px;background:transparent;border:1px dashed var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer" style-hover="color:var(--text);border-color:var(--l4)">{{ ex.label }}</button>
             </sc-for>
           </div>
@@ -273,7 +273,7 @@
             </div>
             <div style="margin-top:16px;border:1px solid var(--l2);background:var(--panel);padding:16px">
               <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Provenance</div>
-              <sc-for list="{{ detailProvenance }}" as="p" hint-placeholder-count="4">
+              <sc-for list="{{ detailProvenance }}" as="p" hint-placeholder-count="3">
                 <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-top:1px solid var(--l1);font-size:12px">
                   <span style="color:var(--dim)">{{ p.label }}</span>
                   <span style="{{ p.style }}">{{ p.value }}</span>
@@ -289,7 +289,7 @@
             </div>
             <h1 style="margin:10px 0 0;font-size:clamp(28px,3.6vw,46px);line-height:1.02;font-weight:700;letter-spacing:-0.02em">{{ detailName }}</h1>
             <div style="display:flex;flex-wrap:wrap;gap:28px;margin:26px 0 30px;padding:20px;border:1px solid var(--l2);background:var(--panel)">
-              <sc-for list="{{ detailHeadline }}" as="h" hint-placeholder-count="4">
+              <sc-for list="{{ detailHeadline }}" as="h" hint-placeholder-count="3">
                 <div>
                   <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ h.label }}</div>
                   <div style="{{ h.style }}">{{ h.value }}</div>
@@ -384,7 +384,7 @@
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:18px;border:1px solid var(--l2);background:var(--panel)">
                   <div>
                     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Your filters</div>
-                    <sc-for list="{{ msg.filters }}" as="f" hint-placeholder-count="4">
+                    <sc-for list="{{ msg.filters }}" as="f" hint-placeholder-count="3">
                       <div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--l1);font-size:13px">
                         <span style="color:var(--dim)">{{ f.label }}</span>
                         <span style="font-family:'IBM Plex Mono',monospace;color:var(--text)">{{ f.value }}</span>
@@ -473,7 +473,7 @@
       <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">About the data</h1>
       <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Forza Horizon 6 launched on 19 May 2026 with more than 550 cars, and the roster keeps growing through Festival Playlist, Car Pass and Aftermarket additions. Nothing in this interface assumes a fixed car count — every list is driven by the current database version.</p>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-        <sc-for list="{{ trustLevels }}" as="t" hint-placeholder-count="4">
+        <sc-for list="{{ trustLevels }}" as="t" hint-placeholder-count="3">
           <div style="padding:20px;background:var(--panel);border:1px solid var(--l2)">
             <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
             <p style="margin:12px 0 0;font-size:13px;color:var(--muted)">{{ t.text }}</p>
@@ -484,7 +484,7 @@
       <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">Cars live in a Supabase Postgres database, reached through the ForzaHelper API, and are never bundled into this frontend. Every table, filter option, count and comparison is the result of a live query, so the interface has no opinion about how many cars exist.</p>
       <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">The Car Finder sends your words to the ForzaHelper API, which resolves them into structured filters and builds the query itself; the browser never writes SQL and holds no database credentials. The filters and the exact request are shown with every answer, so a wrong result can be traced to a wrong constraint rather than guessed at. Filter and sort state in the explorer produces the same kind of request, visible under “Show request”.</p>
       <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft)">
-        <sc-for list="{{ dbFacts }}" as="d" hint-placeholder-count="4">
+        <sc-for list="{{ dbFacts }}" as="d" hint-placeholder-count="3">
           <div style="display:flex;gap:12px"><span style="color:var(--dim2);min-width:150px">{{ d.label }}</span><span>{{ d.value }}</span></div>
         </sc-for>
       </div>
@@ -1209,7 +1209,9 @@ class Component extends DCLogic {
     });
 
     return {
-      navItems: [["explorer","Cars"],["compare","Compare"],["chat","Car Finder"],["about","About / Data"]].map(([v, label]) => ({label, style: navStyle(v), go: () => this.go(v)})),
+      // Compare and Car Finder are omitted here: both have a dedicated button on
+      // the right of the header, and Compare's also carries the selection count.
+      navItems: [["explorer","Cars"],["about","About / Data"]].map(([v, label]) => ({label, style: navStyle(v), go: () => this.go(v)})),
       compareCount: String(s.compare.length),
       goCompare: () => this.go("compare"), goChat: () => this.go("chat"), goExplorer: () => this.go("explorer"),
       theme: s.theme,
