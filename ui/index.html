@@ -248,8 +248,8 @@
 
       <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
         <div style="padding:40px;border:1px solid var(--l2);background:var(--panel)">
-          <h2 style="margin:0 0 8px;font-size:20px;font-weight:600">No exact matches</h2>
-          <p style="margin:0 0 6px;color:var(--muted);max-width:62ch">The query returned zero rows — nothing in the database satisfies every constraint at the same time. Constraints were not relaxed automatically.</p>
+          <h2 style="margin:0 0 8px;font-size:20px;font-weight:600">{{ noResultsTitle }}</h2>
+          <p style="margin:0 0 6px;color:var(--muted);max-width:62ch">{{ noResultsBody }}</p>
           <p style="margin:0 0 22px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accentSoft)">Most restrictive constraint: {{ bottleneck }}</p>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             <sc-for list="{{ relaxOptions }}" as="r" hint-placeholder-count="3">
@@ -568,7 +568,7 @@ class Component extends DCLogic {
   state = {
     view: "explorer", detailId: null, compare: [], searchText: "", chatDraft: "", messages: [],
     columns: DEFAULT_COLS.slice(), columnsOpen: false, sortKey: "pi", sortDir: -1, page: 0,
-    rows: [], total: 0, status: "loading", statusNote: "Searching", errorMsg: "", sql: "", diagnosis: undefined, relaxed: [],
+    rows: [], total: 0, status: "loading", statusNote: "Searching", errorMsg: "", sql: "", diagnosis: undefined, relaxed: [], warnings: [],
     sqlOpen: false, copied: false, theme: "dark",
     facets: {make:[], model:[], type:[], country:[], rarity:[], dt:[]},
     bounds: {pi: [100, 999]}, filtersOpen: false, qDraft: "", units: "imperial",
@@ -798,7 +798,7 @@ class Component extends DCLogic {
     const body = this.searchBody(f, {sortKey: s.sortKey, dir: s.sortDir, limit: PAGE, offset: s.page * PAGE});
     const token = ++this.reqToken;
     this._loadKey = this.loadKey();
-    this.setState({sql: JSON.stringify(body, null, 2), status: "loading", statusNote: "Searching", errorMsg: "", diagnosis: undefined, relaxed: []});
+    this.setState({sql: JSON.stringify(body, null, 2), status: "loading", statusNote: "Searching", errorMsg: "", diagnosis: undefined, relaxed: [], warnings: []});
     this.api("/api/cars/search", {method: "POST", body}).then(res => {
       if (token !== this.reqToken) return;
       if (!res.ok) {
@@ -808,7 +808,8 @@ class Component extends DCLogic {
       const d = res.data || {};
       const mapped = (d.results || []).map(mapRow);
       mapped.forEach(c => { this.cache[c.id] = c; });
-      this.setState({rows: mapped, total: d.total || 0, status: "ok", diagnosis: diagnosisOf(d), relaxed: d.relaxed_results || []});
+      this.setState({rows: mapped, total: d.total || 0, status: "ok", diagnosis: diagnosisOf(d),
+                     relaxed: d.relaxed_results || [], warnings: d.warnings || []});
     });
   }
 
@@ -1106,9 +1107,9 @@ class Component extends DCLogic {
     const kfmt = (v) => v >= 10000 ? Math.round(v / 1000) + "k" : num(v);
 
     const chips = this.activeChips(f).map(p => ({k: p.k, label: p.label, clear: () => this.setF({[p.k]: ""})}));
-    const bottleneckText = s.diagnosis === undefined ? "Measuring each constraint…"
-      : s.diagnosis ? s.diagnosis.label + " — dropping it alone returns " + num(s.diagnosis.n) + " row" + (s.diagnosis.n === 1 ? "" : "s")
-      : "Not determined — needs a connected database to count per constraint";
+    const bottleneckText = s.diagnosis === undefined ? "Checking which constraint is binding" + String.fromCharCode(8230)
+      : s.diagnosis ? s.diagnosis.label
+      : "No single constraint explains the empty result.";
 
     const statusMap = {
       loading: {label: "Querying API", color: "var(--warn)", detail: "ForzaHelper backend · structured filters"},
@@ -1292,6 +1293,13 @@ class Component extends DCLogic {
       loadingLabel: (s.statusNote || "Loading") + String.fromCharCode(8230),
       hasResults: s.status === "ok" && rows.length > 0,
       noResults: s.status === "ok" && rows.length === 0,
+      // The backend flags values the data does not contain at all. That is a
+      // different answer from a near miss, so it gets a different heading.
+      noResultsTitle: (s.warnings || []).some(w => /contains no/.test(w))
+        ? "No eligible cars found"
+        : "No exact matches",
+      noResultsBody: (s.warnings || []).filter(w => /contains no/.test(w)).join(" ")
+        || "The query returned zero rows. Nothing in the database satisfies every constraint at the same time, and constraints were not relaxed automatically.",
       isDisconnected: s.status === "error" || s.status === "unconfigured",
       connTitle: s.status === "error" ? "The API returned an error" : "No API connected",
       connBody: s.status === "error"
