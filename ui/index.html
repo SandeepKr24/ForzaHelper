@@ -54,6 +54,13 @@
   @keyframes fh6pulse { 0% { opacity:.35; } 50% { opacity:1; } 100% { opacity:.35; } }
   button, select, a, tr, input { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease; }
   button:active { transform: translateY(1px); }
+  /* The car detail view is two columns on a wide screen. Below that, the left
+     column's 280px minimum leaves the right one too narrow to hold anything, so
+     the two stack instead. */
+  @media (max-width: 760px) {
+    .fh6-detail-cols { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; }
+  }
+
   /* Phones: the header's logo, nav and control cluster cannot fit on one row,
      so they wrap. Tightening padding, gaps and control size keeps that to two
      rows instead of four, and keeps the sticky header out of the way. */
@@ -266,7 +273,7 @@
     <main style="max-width:1360px;margin:0 auto;padding:32px 20px 90px">
       <button onClick="{{ goExplorer }}" style="padding:0;background:transparent;border:0;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--accent)">← Back to explorer</button>
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:34px;margin-top:22px">
-        <div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.5fr);gap:34px;align-items:start">
+        <div class="fh6-detail-cols" style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.5fr);gap:34px;align-items:start">
           <div>
             <div style="aspect-ratio:16/10;border:1px solid var(--l2);background:repeating-linear-gradient(115deg,var(--ph1) 0 12px,var(--ph2) 12px 24px);display:flex;align-items:flex-end;padding:14px">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--faint)">car render — 16:10, lazy-loaded</span>
@@ -1335,7 +1342,10 @@ class Component extends DCLogic {
         {label: "Power/weight", value: specVal(this.pw(car), uCfg.pw.unit)}
       ].map(h => ({label: h.label, value: h.value, style: "font-family:" + MONO + ";font-size:20px;font-weight:500;color:var(--ink);margin-top:6px"})),
       detailSpecs: [
-        {label: "Year", v: car.year}, {label: "PI", v: car.pi}, {label: "Class", v: car.cls},
+        // Year and PI are plain numbers, not quantities: no thousands separator.
+        {label: "Year", v: car.year == null ? null : String(car.year)},
+        {label: "PI", v: car.pi == null ? null : String(car.pi)},
+        {label: "Class", v: car.cls},
         {label: "Type", v: car.type}, {label: "Country", v: car.country}, {label: "Rarity", v: car.rarity},
         {label: "Drivetrain", v: car.dt},
         {label: "Torque", v: this.tqOf(car) == null ? null : num(this.tqOf(car)) + " " + uCfg.tq.unit},
