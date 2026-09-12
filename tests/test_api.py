@@ -287,3 +287,80 @@ def test_chat_endpoint_returns_structured_rows_not_prose(client):
     assert body["interpretations"]
     # The frontend must be able to ignore the prose entirely.
     assert body["conversation"]["active_filters"]["price_cr_max"] == 90000
+
+
+# ------------------------------------------------------- round-trip batching
+#
+# Every statement costs ~110ms of network and under a millisecond of database
+# work, so these guard the batching that keeps the statement count down.
+
+
+def test_search_returns_the_total_without_a_second_query():
+    """count(*) OVER () must give the same total as a separate count."""
+    from forzahelper.search import build_search_sql
+    from forzahelper.db import fetch_one
+
+    request = SearchRequest(filters=CarFilters(drivetrain=["AWD"]), limit=5)
+    response = search_cars(request)
+    _, count_sql, params = build_search_sql(request)
+
+    assert response.count == 5
+    assert response.total == int(fetch_one(count_sql, params)["total"])
+
+
+def test_paging_past_the_end_still_reports_the_total():
+    response = search_cars(SearchRequest(filters=CarFilters(), limit=10, offset=5000))
+    assert response.count == 0
+    assert response.total == 635
+
+
+def test_count_many_matches_individual_counts():
+    from forzahelper.search import count_many
+
+    sets = [
+        CarFilters(drivetrain=["AWD"]),
+        CarFilters(country=["Japan"], year_min=2015),
+        CarFilters(horsepower_min=1000),
+        CarFilters(make=["Nothing Real"]),
+    ]
+    batched = count_many(sets)
+    individual = [search_cars(SearchRequest(filters=f, limit=1)).total for f in sets]
+    assert batched == individual
+
+
+def test_rows_many_keeps_each_filter_sets_rows_separate():
+    from forzahelper.search import rows_many
+
+    sets = [CarFilters(country=["Japan"]), CarFilters(country=["Italy"])]
+    japan, italy = rows_many(sets, Sort(field="pi", direction="desc"), limit=3)
+
+    assert len(japan) == 3 and len(italy) == 3
+    assert all(c.country == "Japan" for c in japan)
+    assert all(c.country == "Italy" for c in italy)
+    # Ordering is applied per branch, not across the union.
+    assert [c.pi for c in japan] == sorted((c.pi for c in japan), reverse=True)
+
+
+def test_filter_metadata_is_one_query():
+    """Regression: this was eleven round trips on the page's first load."""
+    from forzahelper import search as module
+
+    module.reset_caches()
+    calls = {"n": 0}
+    original = module.fetch_one
+
+    def counted(sql, params=None):
+        calls["n"] += 1
+        return original(sql, params)
+
+    module.fetch_one = counted
+    try:
+        metadata = module.filter_metadata()
+    finally:
+        module.fetch_one = original
+
+    assert calls["n"] == 1
+    assert len(metadata["categorical"]["make"]) == 89
+    assert metadata["categorical"]["drivetrain"] == ["AWD", "FWD", "RWD"]
+    assert metadata["ranges"]["price_cr"]["max"] == 70_000_000
+    assert metadata["null_counts"]["drivetrain"] == 5

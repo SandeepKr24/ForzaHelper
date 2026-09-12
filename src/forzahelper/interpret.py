@@ -160,26 +160,28 @@ def find_relaxations(
     Imported lazily to keep this module free of a database dependency at import
     time, which keeps the policy unit-testable on its own.
     """
-    from .search import search_cars
+    from .search import count_many, rows_many
 
-    found: list[RelaxedResultSet] = []
-    for candidate in _candidates(filters):
-        response = search_cars(
-            SearchRequest(filters=candidate.filters, sort=sort, limit=limit)
+    candidates = _candidates(filters)
+    if not candidates:
+        return []
+
+    # Two round trips for the whole set, rather than two per candidate. Each
+    # statement costs ~110ms of network and under a millisecond of database
+    # work, so batching is the entire optimisation.
+    counts = count_many([c.filters for c in candidates])
+    viable = [(c, n) for c, n in zip(candidates, counts) if n > 0][:max_suggestions]
+    if not viable:
+        return []
+
+    previews = rows_many([c.filters for c, _ in viable], sort, limit)
+    return [
+        RelaxedResultSet(
+            description=f"{candidate.description}: {count} car(s) become eligible.",
+            relaxed_filter=candidate.field,
+            filters=candidate.filters,
+            count=count,
+            results=rows,
         )
-        if response.total > 0:
-            found.append(
-                RelaxedResultSet(
-                    description=(
-                        f"{candidate.description}: "
-                        f"{response.total} car(s) become eligible."
-                    ),
-                    relaxed_filter=candidate.field,
-                    filters=candidate.filters,
-                    count=response.total,
-                    results=response.results,
-                )
-            )
-        if len(found) >= max_suggestions:
-            break
-    return found
+        for (candidate, count), rows in zip(viable, previews)
+    ]

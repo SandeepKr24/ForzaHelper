@@ -809,17 +809,22 @@ class Component extends DCLogic {
       this.setState(prev => ({
         facets: Object.assign({}, prev.facets, {
           make: c.make || [], type: c.car_type || [], country: c.country || [],
-          rarity: c.rarity || [], dt: c.drivetrain || []
+          rarity: c.rarity || [], dt: c.drivetrain || [],
+          model: prev.f.make ? prev.facets.model : (c.model || [])
         }),
         bounds: b
       }));
     });
-    this.loadModels(this.state.f.make);
+    // No second call on load: the metadata above already carries every model.
+    if (this.state.f.make) this.loadModels(this.state.f.make);
   }
 
   loadModels(make) {
     if (!this.configured()) return;
-    const qs = make ? "?make=" + encodeURIComponent(make) : "";
+    // Without a make there is nothing to narrow -- the full list is already in
+    // the facets, so this would just repeat the request above.
+    if (!make) return;
+    const qs = "?make=" + encodeURIComponent(make);
     this.api("/api/filters" + qs).then(res => {
       const c = res.ok ? ((res.data || {}).categorical || {}) : {};
       this.setState(prev => ({facets: Object.assign({}, prev.facets, {model: c.model || []})}));

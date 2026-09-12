@@ -235,8 +235,10 @@ def build_search_sql(
     params["offset"] = request.offset
 
     columns = ", ".join(SELECT_COLUMNS)
+    # count(*) OVER () returns the total alongside the page, so the page and
+    # its count cost one round trip instead of two.
     rows_sql = (
-        f"SELECT {columns} FROM {relation} {where}"
+        f"SELECT {columns}, count(*) OVER () AS _total FROM {relation} {where}"
         f" ORDER BY {build_order_by(request.sort, request.filters)}"
         f" LIMIT %(limit)s OFFSET %(offset)s"
     )
@@ -253,7 +255,13 @@ def search_cars(
 
     started = time.perf_counter()
     rows = fetch_all(rows_sql, params)
-    count_row = fetch_one(count_sql, params)
+    if rows:
+        total = int(rows[0]["_total"])
+    else:
+        # An empty page carries no window-function row, so the count is only
+        # needed when nothing came back -- and then it is always zero unless
+        # the caller paged past the end.
+        total = 0 if not request.offset else int((fetch_one(count_sql, params) or {}).get("total", 0))
     duration_ms = (time.perf_counter() - started) * 1000
 
     results = [CarResult.model_validate(row) for row in rows]
@@ -264,7 +272,7 @@ def search_cars(
     return SearchResponse(
         filters_applied=request.filters.active(),
         count=len(results),
-        total=int(count_row["total"]) if count_row else 0,
+        total=total,
         results=results,
         warnings=warnings,
         query_metadata=QueryMetadata(
@@ -354,8 +362,10 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
     settings = settings or get_settings()
     relation = settings.cars_relation
 
-    categorical: dict[str, list[str]] = {}
-    for column in (
+    # One statement, not eleven. The database answers each of these in well
+    # under a millisecond, so the cost was entirely the network round trip per
+    # query -- eleven of them on the page's first load.
+    facet_columns = (
         "drivetrain",
         "pi_class",
         "country",
@@ -363,19 +373,7 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
         "make",
         "model",
         "rarity",
-    ):
-        rows = fetch_all(
-            f"SELECT DISTINCT {column} AS value FROM {relation}"
-            f" WHERE {column} IS NOT NULL ORDER BY value"
-        )
-        categorical[column] = [r["value"] for r in rows]
-
-    rows = fetch_all(
-        f"SELECT DISTINCT unnest(acquisition_methods) AS value FROM {relation}"
-        f" WHERE acquisition_methods IS NOT NULL ORDER BY value"
     )
-    categorical["acquisition_methods"] = [r["value"] for r in rows]
-
     numeric_columns = (
         "year",
         "price_cr",
@@ -385,40 +383,65 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
         "weight_lb",
         "hp_per_tonne",
     )
-    selects = ", ".join(
-        f"min({c}) AS {c}_min, max({c}) AS {c}_max" for c in numeric_columns
+
+    facet_selects = [
+        f"(SELECT coalesce(json_agg(v ORDER BY v), '[]'::json) FROM"
+        f" (SELECT DISTINCT {c} AS v FROM {relation} WHERE {c} IS NOT NULL) s)"
+        f" AS facet_{c}"
+        for c in facet_columns
+    ]
+    facet_selects.append(
+        f"(SELECT coalesce(json_agg(v ORDER BY v), '[]'::json) FROM"
+        f" (SELECT DISTINCT unnest(acquisition_methods) AS v FROM {relation}"
+        f"  WHERE acquisition_methods IS NOT NULL) s) AS facet_acquisition_methods"
     )
-    bounds_row = fetch_one(f"SELECT {selects} FROM {relation}") or {}
+    range_selects = [
+        f"min({c}) AS {c}_min, max({c}) AS {c}_max" for c in numeric_columns
+    ]
+    null_selects = [
+        f"count(*) FILTER (WHERE {c} IS NULL) AS null_{c}" for c in _NULLABLE_COLUMNS
+    ]
+    bands_select = (
+        f"(SELECT coalesce(json_agg(b ORDER BY b.pi_min), '[]'::json) FROM"
+        f" (SELECT pi_class, min(pi) AS pi_min, max(pi) AS pi_max, count(*) AS count"
+        f"  FROM {relation} WHERE pi_class IS NOT NULL GROUP BY pi_class) b)"
+        f" AS pi_class_bands"
+    )
+
+    row = fetch_one(
+        "SELECT "
+        + ", ".join([*facet_selects, bands_select, *range_selects, *null_selects])
+        + f" FROM {relation}"
+    ) or {}
+
+    categorical = {
+        c: row.get(f"facet_{c}") or []
+        for c in (*facet_columns, "acquisition_methods")
+    }
     ranges = {
         c: {
-            "min": _as_number(bounds_row.get(f"{c}_min")),
-            "max": _as_number(bounds_row.get(f"{c}_max")),
+            "min": _as_number(row.get(f"{c}_min")),
+            "max": _as_number(row.get(f"{c}_max")),
         }
         for c in numeric_columns
     }
+    counts = {
+        c: int(row[f"null_{c}"])
+        for c in _NULLABLE_COLUMNS
+        if row.get(f"null_{c}")
+    }
 
-    # PI class bands are derived, not assumed -- this dataset's bands differ
-    # from retail Forza's, and the query layer must not presume either.
-    band_rows = fetch_all(
-        f"SELECT pi_class, min(pi) AS pi_min, max(pi) AS pi_max, count(*) AS n"
-        f" FROM {relation} WHERE pi_class IS NOT NULL"
-        f" GROUP BY pi_class ORDER BY min(pi)"
-    )
+    global _null_counts_cache
+    _null_counts_cache = counts
 
     _filter_metadata_cache = {
         "categorical": categorical,
         "ranges": ranges,
-        "pi_class_bands": [
-            {
-                "pi_class": r["pi_class"],
-                "pi_min": r["pi_min"],
-                "pi_max": r["pi_max"],
-                "count": r["n"],
-            }
-            for r in band_rows
-        ],
+        # PI class bands are derived, not assumed -- this dataset's bands differ
+        # from retail Forza's, and the query layer must not presume either.
+        "pi_class_bands": row.get("pi_class_bands") or [],
         "sortable_fields": ["relevance", *sorted(_SORT_COLUMNS)],
-        "null_counts": null_counts(settings),
+        "null_counts": counts,
     }
     return _filter_metadata_cache
 
@@ -449,6 +472,78 @@ def _as_number(value: Any) -> float | int | None:
     if value is None:
         return None
     return int(value) if float(value).is_integer() else float(value)
+
+
+def _namespaced(
+    clauses: list[str], params: dict[str, Any], prefix: str
+) -> tuple[list[str], dict[str, Any]]:
+    """Rename a filter's placeholders so several can share one statement."""
+    renamed = {f"{prefix}{k}": v for k, v in params.items()}
+    out = []
+    for clause in clauses:
+        # Longest first, so one parameter name cannot be rewritten inside
+        # another that happens to start with the same characters.
+        for key in sorted(params, key=len, reverse=True):
+            clause = clause.replace(f"%({key})s", f"%({prefix}{key})s")
+        out.append(clause)
+    return out, renamed
+
+
+def count_many(
+    filter_sets: list[CarFilters], settings: Settings | None = None
+) -> list[int]:
+    """Row counts for several filter sets in a single round trip.
+
+    Each query costs about 110ms of network and under a millisecond of database
+    work, so the only thing worth optimising is the number of statements.
+    """
+    if not filter_sets:
+        return []
+    settings = settings or get_settings()
+    branches, params = [], {}
+    for i, filters in enumerate(filter_sets):
+        clauses, branch_params = build_where(filters)
+        clauses, branch_params = _namespaced(clauses, branch_params, f"c{i}_")
+        params.update(branch_params)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        branches.append(
+            f"SELECT {i} AS idx, count(*) AS n FROM {settings.cars_relation} {where}"
+        )
+    rows = fetch_all(" UNION ALL ".join(branches), params)
+    by_idx = {int(r["idx"]): int(r["n"]) for r in rows}
+    return [by_idx.get(i, 0) for i in range(len(filter_sets))]
+
+
+def rows_many(
+    filter_sets: list[CarFilters],
+    sort: Sort,
+    limit: int,
+    settings: Settings | None = None,
+) -> list[list[CarResult]]:
+    """Top rows for several filter sets in a single round trip."""
+    if not filter_sets:
+        return []
+    settings = settings or get_settings()
+    columns = ", ".join(SELECT_COLUMNS)
+    branches, params = [], {}
+    for i, filters in enumerate(filter_sets):
+        clauses, branch_params = build_where(filters)
+        branch_params.update(_relevance_params(filters))
+        clauses, branch_params = _namespaced(clauses, branch_params, f"c{i}_")
+        params.update(branch_params)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = build_order_by(sort, filters)
+        for key in sorted(_relevance_params(filters), key=len, reverse=True):
+            order = order.replace(f"%({key})s", f"%(c{i}_{key})s")
+        branches.append(
+            f"(SELECT {i} AS idx, {columns} FROM {settings.cars_relation} {where}"
+            f" ORDER BY {order} LIMIT {int(limit)})"
+        )
+    rows = fetch_all(" UNION ALL ".join(branches), params)
+    out: list[list[CarResult]] = [[] for _ in filter_sets]
+    for row in rows:
+        out[int(row["idx"])].append(CarResult.model_validate(row))
+    return out
 
 
 _AGGREGATABLE = {
