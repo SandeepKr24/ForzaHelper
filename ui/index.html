@@ -203,7 +203,7 @@
       </section>
 
       <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">Waiting for the API…</div>
+        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">{{ loadingLabel }}</div>
       </sc-if>
 
       <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
@@ -574,7 +574,7 @@ class Component extends DCLogic {
   state = {
     view: "explorer", detailId: null, compare: [], searchText: "", chatDraft: "", messages: [],
     columns: DEFAULT_COLS.slice(), columnsOpen: false, sortKey: "pi", sortDir: -1, page: 0,
-    rows: [], total: 0, status: "loading", errorMsg: "", sql: "", diagnosis: undefined, relaxed: [],
+    rows: [], total: 0, status: "loading", statusNote: "Searching", errorMsg: "", sql: "", diagnosis: undefined, relaxed: [],
     sqlOpen: false, copied: false, theme: "dark",
     facets: {make:[], model:[], type:[], country:[], rarity:[], dt:[]},
     bounds: {pi: [100, 999]}, filtersOpen: false, qDraft: "", units: "imperial",
@@ -773,7 +773,7 @@ class Component extends DCLogic {
     const body = this.searchBody(f, {sortKey: s.sortKey, dir: s.sortDir, limit: PAGE, offset: s.page * PAGE});
     const token = ++this.reqToken;
     this._loadKey = this.loadKey();
-    this.setState({sql: JSON.stringify(body, null, 2), status: "loading", errorMsg: "", diagnosis: undefined, relaxed: []});
+    this.setState({sql: JSON.stringify(body, null, 2), status: "loading", statusNote: "Searching", errorMsg: "", diagnosis: undefined, relaxed: []});
     this.api("/api/cars/search", {method: "POST", body}).then(res => {
       if (token !== this.reqToken) return;
       if (!res.ok) {
@@ -857,14 +857,22 @@ class Component extends DCLogic {
   heroSearch = (text) => {
     const q = String(text || "").trim();
     if (q) {
-      // The backend interprets the sentence and returns resolved filters.
+      // Interpreting the sentence costs a round trip to the model, and until it
+      // returns the rows on screen are the previous search. Mark the table busy
+      // now, so it never shows stale results as though they were the answer.
+      this.setState({status: "loading", statusNote: "Interpreting your request",
+                     rows: [], total: 0, diagnosis: undefined, relaxed: []});
       this.api("/api/chat", {method: "POST", body: {message: q, limit: 1}}).then(res => {
         if (res.ok && res.data) {
           this.conversation = res.data.conversation || null;
-          this.setF(this.fromApiFilters(res.data.filters));
-        } else {
-          this.setF(Object.assign({}, EMPTY_F, {q: q}));
         }
+        // Clearing the cached key forces a reload even when the resolved
+        // filters happen to equal the current ones -- otherwise the busy state
+        // would never clear.
+        this._loadKey = null;
+        this.setF(res.ok && res.data
+          ? this.fromApiFilters(res.data.filters)
+          : Object.assign({}, EMPTY_F, {q: q}));
       });
     }
     const hero = document.getElementById("fh6-hero");
@@ -1253,7 +1261,7 @@ class Component extends DCLogic {
 
       resultSummary: s.status === "ok"
         ? num(s.total) + (s.total === 1 ? " car matches" : " cars match") + (chips.length ? " " + chips.length + " constraint" + (chips.length === 1 ? "" : "s") : " the current view")
-        : s.status === "loading" ? "Waiting for the API…" : "No result set",
+        : s.status === "loading" ? (s.statusNote || "Loading") + String.fromCharCode(8230) : "No result set",
       statusLabel: st.label,
       statusDetail: st.detail,
       statusDotStyle: "width:8px;height:8px;border-radius:50%;background:" + st.color + ";flex:0 0 auto",
@@ -1262,6 +1270,7 @@ class Component extends DCLogic {
       sqlToggleLabel: s.sqlOpen ? "Hide request" : "Show request",
       toggleSql: () => this.setState({sqlOpen: !s.sqlOpen}),
       isLoading: s.status === "loading",
+      loadingLabel: (s.statusNote || "Loading") + String.fromCharCode(8230),
       hasResults: s.status === "ok" && rows.length > 0,
       noResults: s.status === "ok" && rows.length === 0,
       isDisconnected: s.status === "error" || s.status === "unconfigured",
