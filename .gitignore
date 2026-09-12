@@ -10,6 +10,11 @@
 # .env.example is intentionally NOT ignored - it documents the required keys
 # without containing any values.
 
+# Source artwork for the logo. The site serves the cropped copies in ui/icons/,
+# which must stay tracked -- hence the leading slash, which limits this to the
+# root folder.
+/icons/
+
 # Local verification harnesses (Playwright / OpenTelemetry). Useful to keep,
 # but they are developer scratch tooling, not part of the deployment.
 tools/
@@ -18,6 +23,8 @@ tools/
 # Internal docs and notes (not for GitHub)
 # ---------------------------------------------------------------------------
 JOURNAL.md
+# Source spreadsheet. The data lives in Supabase; nothing in the app reads this.
+*.xlsx
 02_claude_code_fh6_datastore_chatbot.md
 03_claude_integration_fh6.md
 db/DB_CHANGES.md

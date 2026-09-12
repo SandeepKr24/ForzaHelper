@@ -12,7 +12,7 @@
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@400;500;600;700&family=Bungee+Tint&family=Kumbh+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#0a0b0c; --panel:#0d0e0f; --input:#101112; --thead:#121314; --hover:#15171a; --badge:#17191b;
@@ -20,7 +20,7 @@
     --l1:rgba(255,255,255,0.07); --l2:rgba(255,255,255,0.11); --l3:rgba(255,255,255,0.17); --l4:rgba(255,255,255,0.38);
     --ink:#f2f0ed; --text:#e9e7e4; --soft:#c8bfb8; --muted:#a9a29a; --dim:#8a8177; --dim2:#7d756c;
     --faint:#6f675f; --faint2:#5f5850; --disabled:#4d4741;
-    --accent:#e8622a; --accentHi:#ff7a41; --accentSoft:#f0b79c; --onAccent:#120a06;
+    --accent:#df4605; --accentHi:#ff7a41; --accentSoft:#f0b79c; --onAccent:#120a06;
     --warn:#e8c17a; --ok:#8fd6a4; --ph1:#111213; --ph2:#151719;
   }
   [data-theme="light"] {
@@ -32,6 +32,26 @@
     --accent:#c74a16; --accentHi:#e8622a; --accentSoft:#8a3a12; --onAccent:#fffaf6;
     --warn:#8a6410; --ok:#276b3d; --ph1:#eceae6; --ph2:#e3e0db;
   }
+  /* Bungee Tint is a colour font: its own palette (a red fill, entry 0, and a
+     pale highlight, entry 1) wins over `color`, so the hero title is recoloured
+     here. Palettes cannot read var(), hence one per theme. */
+  @font-palette-values --fh6-ink-dark {
+    font-family: 'Bungee Tint';
+    override-colors: 0 #df4605, 1 #ffb28f;
+  }
+  @font-palette-values --fh6-ink-light {
+    font-family: 'Bungee Tint';
+    override-colors: 0 #c74a16, 1 #f29a6e;
+  }
+  .fh6-title { font-family:'Bungee Tint','Montserrat Alternates',Helvetica,Arial,sans-serif; color:var(--accent); font-palette:--fh6-ink-dark; }
+  [data-theme="light"] .fh6-title { font-palette:--fh6-ink-light; }
+  /* The About / Data page alone uses Kumbh Sans. Its elements carry inline
+     font-family styles, so the override needs !important to reach them. */
+  .fh6-about, .fh6-about * { font-family:'Kumbh Sans',Helvetica,Arial,sans-serif !important; }
+  /* Header logo: one image per theme, only the matching one is shown. */
+  .fh6-logo-light { display:none; }
+  [data-theme="light"] .fh6-logo-dark { display:none; }
+  [data-theme="light"] .fh6-logo-light { display:block; }
   html, body { margin:0; padding:0; background:var(--bg); }
   html { scroll-padding-top: 60px; }
   * { box-sizing: border-box; }
@@ -72,22 +92,32 @@
        button padding fits it on one line instead of two. */
     header > div:last-child { gap:6px !important; }
     header > div:last-child > button { padding-left:9px !important; padding-right:9px !important; }
+    /* Montserrat Alternates runs wider than the monospace these were sized for. */
+    header > div:last-child button { letter-spacing:0 !important; }
+    header [role=group] button { padding-left:8px !important; padding-right:8px !important; }
   }
   @media (max-width: 400px) {
     header nav button { font-size:13px !important; }
     header > div:last-child { gap:4px !important; }
     header > div:last-child button { padding-left:7px !important; padding-right:7px !important; }
+    /* Montserrat Alternates is wider than the monospace these controls were
+       sized for; without this the Car Finder button drops to a third row. */
+    header > div:last-child button { letter-spacing:0 !important; }
+    header [role=group] button { padding-left:6px !important; padding-right:6px !important; font-size:9px !important; }
+    header > div:last-child > button[aria-label] { width:30px !important; }
+    header > div:last-child > button { gap:5px !important; }
   }
 
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; } }
 </style>
 </helmet>
-<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--text);font-family:Archivo,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased">
+<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--bg);color:var(--text);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-variant-numeric:tabular-nums;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased">
 
   <header style="position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding:8px 20px;min-height:60px;background:var(--headerBg);backdrop-filter:blur(10px);border-bottom:1px solid var(--l2)">
     <div style="display:flex;align-items:center;gap:10px;min-width:0">
-      <div style="width:22px;height:22px;background:var(--accent);transform:skewX(-12deg)"></div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap">Forza Helper</div>
+      <img class="fh6-logo-dark" src="icons/logo-dark.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
+      <img class="fh6-logo-light" src="icons/logo-light.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
+      <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap">Forza Helper</div>
     </div>
     <nav style="display:flex;flex-wrap:wrap;gap:2px;flex:0 1 auto;min-width:0">
       <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="2">
@@ -100,10 +130,10 @@
           <button onClick="{{ u.onClick }}" style="{{ u.style }}">{{ u.label }}</button>
         </sc-for>
       </div>
-      <button onClick="{{ toggleTheme }}" aria-label="Toggle colour theme" style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--l3);color:var(--soft);font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--ink)">{{ themeGlyph }}</button>
+      <button onClick="{{ toggleTheme }}" aria-label="Toggle colour theme" style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--l3);color:var(--soft);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:13px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--ink)">{{ themeGlyph }}</button>
       <button onClick="{{ goCompare }}" style="display:flex;align-items:center;gap:8px;flex:0 0 auto;white-space:nowrap;padding:7px 12px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;letter-spacing:0.04em;cursor:pointer" style-hover="border-color:var(--accent)">
         Compare
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent)">{{ compareCount }}</span>
+        <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--accent)">{{ compareCount }}</span>
       </button>
       <button onClick="{{ goChat }}" style="flex:0 0 auto;white-space:nowrap;padding:8px 14px;background:var(--accent);border:1px solid var(--accent);color:var(--onAccent);font-size:12px;font-weight:600;letter-spacing:0.04em;cursor:pointer" style-hover="background:var(--accentHi)">Car Finder</button>
     </div>
@@ -114,8 +144,8 @@
 
       <section id="fh6-hero" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:calc(100vh - 60px);padding:60px 0 72px;border-bottom:1px solid var(--l1)">
         <div style="max-width:900px;width:100%">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);margin-bottom:22px;animation:fh6rise .55s cubic-bezier(.2,.7,.3,1) both">Forza Horizon 6 · Car intelligence</div>
-          <h1 style="margin:0;font-size:clamp(42px,6.6vw,92px);line-height:0.94;font-weight:700;letter-spacing:-0.03em;text-wrap:balance;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .07s both">Every car, every stat,<br>one query away.</h1>
+          <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);margin-bottom:22px;animation:fh6rise .55s cubic-bezier(.2,.7,.3,1) both">Forza Horizon 6 · Car intelligence</div>
+          <h1 class="fh6-title" style="margin:0;font-size:clamp(42px,6.6vw,92px);line-height:0.94;font-weight:400;letter-spacing:0;text-wrap:balance;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .07s both">Every car, every stat,<br>one query away.</h1>
           <p style="margin:26px auto 0;max-width:56ch;color:var(--muted);font-size:17px;text-wrap:pretty;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .16s both">Filter the roster on stock specifications, compare upto 4 cars side by side, or describe what you want in English and let the Car Finder work its magic.</p>
           <div style="display:flex;gap:0;margin:38px auto 0;max-width:720px;border:1px solid var(--l3);background:var(--input);animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .25s both">
             <input value="{{ searchText }}" onChange="{{ onSearchInput }}" onKeyDown="{{ onSearchKey }}" placeholder="e.g. AWD cars around 500 hp under 100k" style="flex:1;min-width:0;padding:18px 20px;background:transparent;border:0;color:var(--text);font-size:16px;outline:none" />
@@ -123,17 +153,17 @@
           </div>
           <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:14px auto 0;max-width:720px;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .34s both">
             <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="3">
-              <button onClick="{{ ex.go }}" style="padding:5px 10px;background:transparent;border:1px dashed var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer" style-hover="color:var(--text);border-color:var(--l4)">{{ ex.label }}</button>
+              <button onClick="{{ ex.go }}" style="padding:5px 10px;background:transparent;border:1px dashed var(--l3);color:var(--dim);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;cursor:pointer" style-hover="color:var(--text);border-color:var(--l4)">{{ ex.label }}</button>
             </sc-for>
           </div>
         </div>
-        <div style="margin-top:auto;padding-top:56px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--faint2);animation:fh6bob 2.4s ease-in-out 1s infinite">Scroll for the full roster ↓</div>
+        <div style="margin-top:auto;padding-top:56px;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--faint2);animation:fh6bob 2.4s ease-in-out 1s infinite">Scroll for the full roster ↓</div>
       </section>
 
       <div style="min-height:calc(100vh - 60px);display:flex;flex-direction:column">
       <section style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;padding:20px 0">
         <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px;padding:0 14px;background:var(--input);border:1px solid var(--l3)">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--faint2)">⌕</span>
+          <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:13px;color:var(--faint2)">⌕</span>
           <input value="{{ tableQuery }}" onChange="{{ onTableQuery }}" onKeyDown="{{ onTableQueryKey }}" placeholder="Search make, model or car type" style="flex:1;min-width:0;padding:11px 0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none" />
           <sc-if value="{{ hasTableQuery }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ clearTableQuery }}" aria-label="Clear search" style="background:transparent;border:0;color:var(--dim);font-size:14px;cursor:pointer;padding:0" style-hover="color:var(--ink)">×</button>
@@ -142,7 +172,7 @@
         <button onClick="{{ toggleFilters }}" style="{{ filterBtnStyle }}" style-hover="border-color:var(--l4);color:var(--ink)">
           Filters
           <sc-if value="{{ hasFilterCount }}" hint-placeholder-val="{{ false }}">
-            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;background:var(--accent);color:var(--onAccent);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600">{{ filterCount }}</span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;background:var(--accent);color:var(--onAccent);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600">{{ filterCount }}</span>
           </sc-if>
           <span style="{{ filterCaretStyle }}">▾</span>
         </button>
@@ -155,7 +185,7 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
             <sc-for list="{{ selectFilters }}" as="f" hint-placeholder-count="7">
               <label style="display:flex;flex-direction:column;gap:6px;min-width:0">
-                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ f.label }}</span>
+                <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ f.label }}</span>
                 <select value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;padding:9px 10px;background:var(--input);border:1px solid var(--l3);color:var(--text);font-size:13px;outline:none">
                   <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3">
                     <option value="{{ o.value }}">{{ o.label }}</option>
@@ -169,7 +199,7 @@
             <sc-for list="{{ sliderFilters }}" as="sl" hint-placeholder-count="5">
               <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
-                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ sl.label }}</span>
+                  <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ sl.label }}</span>
                   <span style="{{ sl.readoutStyle }}">{{ sl.readout }}</span>
                 </div>
                 <div style="position:relative;height:24px">
@@ -178,7 +208,7 @@
                   <input type="range" class="fh6r" min="{{ sl.lo }}" max="{{ sl.hi }}" step="{{ sl.step }}" value="{{ sl.vMin }}" onChange="{{ sl.onMin }}" disabled="{{ sl.disabled }}" aria-label="{{ sl.minAria }}" style="{{ sl.minStyle }}" />
                   <input type="range" class="fh6r" min="{{ sl.lo }}" max="{{ sl.hi }}" step="{{ sl.step }}" value="{{ sl.vMax }}" onChange="{{ sl.onMax }}" disabled="{{ sl.disabled }}" aria-label="{{ sl.maxAria }}" style="{{ sl.maxStyle }}" />
                 </div>
-                <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint2)">
+                <div style="display:flex;justify-content:space-between;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;color:var(--faint2)">
                   <span>{{ sl.loLabel }}</span>
                   <span>{{ sl.hiLabel }}</span>
                 </div>
@@ -199,18 +229,18 @@
       <sc-if value="{{ chipsVisible }}" hint-placeholder-val="{{ false }}">
         <section style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px">
           <sc-for list="{{ activeChips }}" as="chip" hint-placeholder-count="2">
-            <button onClick="{{ chip.clear }}" style="animation:fh6in .22s ease both;display:flex;align-items:center;gap:8px;padding:5px 9px;background:rgba(232,98,42,0.12);border:1px solid rgba(232,98,42,0.4);color:var(--accentSoft);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer">{{ chip.label }} <span style="color:var(--accent)">×</span></button>
+            <button onClick="{{ chip.clear }}" style="animation:fh6in .22s ease both;display:flex;align-items:center;gap:8px;padding:5px 9px;background:rgba(232,98,42,0.12);border:1px solid rgba(232,98,42,0.4);color:var(--accentSoft);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;cursor:pointer">{{ chip.label }} <span style="color:var(--accent)">×</span></button>
           </sc-for>
         </section>
       </sc-if>
 
       <section style="display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;padding-bottom:10px">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)">{{ resultSummary }}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--faint2)">*Stock values only</div>
+        <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--dim)">{{ resultSummary }}</div>
+        <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--faint2)">*Stock values only</div>
       </section>
 
       <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">{{ loadingLabel }}</div>
+        <div style="padding:40px;border:1px solid var(--l2);background:var(--panel);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">{{ loadingLabel }}</div>
       </sc-if>
 
       <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
@@ -219,7 +249,7 @@
             <caption style="text-align:left;padding:0;height:0;overflow:hidden;position:absolute;clip:rect(0 0 0 0)">Forza Horizon 6 cars, stock specifications</caption>
             <thead>
               <tr style="background:var(--thead)">
-                <th scope="col" style="width:38px;padding:11px 12px;border-bottom:1px solid var(--l2)"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim2)">CMP</span></th>
+                <th scope="col" style="width:38px;padding:11px 12px;border-bottom:1px solid var(--l2)"><span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;color:var(--dim2)">CMP</span></th>
                 <sc-for list="{{ columns }}" as="col" hint-placeholder-count="8">
                   <th scope="col" onClick="{{ col.onSort }}" style="{{ col.style }}" style-hover="color:var(--ink)">{{ col.label }}{{ col.arrow }}</th>
                 </sc-for>
@@ -238,7 +268,7 @@
           </table>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding:16px 0">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim2)">{{ pageLabel }}</div>
+          <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--dim2)">{{ pageLabel }}</div>
           <div style="display:flex;gap:8px">
             <button onClick="{{ prevPage }}" style="{{ prevStyle }}">Previous</button>
             <button onClick="{{ nextPage }}" style="{{ nextStyle }}">Next</button>
@@ -257,7 +287,7 @@
         <div style="padding:40px;border:1px solid var(--l2);background:var(--panel)">
           <h2 style="margin:0 0 8px;font-size:20px;font-weight:600">{{ noResultsTitle }}</h2>
           <p style="margin:0 0 6px;color:var(--muted);max-width:62ch">{{ noResultsBody }}</p>
-          <p style="margin:0 0 22px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accentSoft)">Most restrictive constraint: {{ bottleneck }}</p>
+          <p style="margin:0 0 22px;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--accentSoft)">Most restrictive constraint: {{ bottleneck }}</p>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             <sc-for list="{{ relaxOptions }}" as="r" hint-placeholder-count="3">
               <button onClick="{{ r.apply }}" style="padding:9px 13px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--ink)">{{ r.label }}</button>
@@ -271,15 +301,15 @@
 
   <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
     <main style="max-width:1360px;margin:0 auto;padding:32px 20px 90px">
-      <button onClick="{{ goExplorer }}" style="padding:0;background:transparent;border:0;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--accent)">← Back to explorer</button>
+      <button onClick="{{ goExplorer }}" style="padding:0;background:transparent;border:0;color:var(--dim);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--accent)">← Back to explorer</button>
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:34px;margin-top:22px">
         <div class="fh6-detail-cols" style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.5fr);gap:34px;align-items:start">
           <div>
             <div style="aspect-ratio:16/10;border:1px solid var(--l2);background:repeating-linear-gradient(115deg,var(--ph1) 0 12px,var(--ph2) 12px 24px);display:flex;align-items:flex-end;padding:14px">
-              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--faint)">car render — 16:10, lazy-loaded</span>
+              <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--faint)">car render — 16:10, lazy-loaded</span>
             </div>
             <div style="margin-top:16px;border:1px solid var(--l2);background:var(--panel);padding:16px">
-              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Provenance</div>
+              <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Provenance</div>
               <sc-for list="{{ detailProvenance }}" as="p" hint-placeholder-count="3">
                 <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-top:1px solid var(--l1);font-size:12px">
                   <span style="color:var(--dim)">{{ p.label }}</span>
@@ -290,23 +320,23 @@
           </div>
           <div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)">{{ detailYear }}</span>
+              <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--dim)">{{ detailYear }}</span>
               <span style="{{ detailClassStyle }}">{{ detailClassLabel }}</span>
-              <span style="padding:3px 8px;background:var(--badge);border:1px solid var(--l3);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--soft)">{{ detailDrivetrain }}</span>
+              <span style="padding:3px 8px;background:var(--badge);border:1px solid var(--l3);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--soft)">{{ detailDrivetrain }}</span>
             </div>
             <h1 style="margin:10px 0 0;font-size:clamp(28px,3.6vw,46px);line-height:1.02;font-weight:700;letter-spacing:-0.02em">{{ detailName }}</h1>
             <div style="display:flex;flex-wrap:wrap;gap:28px;margin:26px 0 30px;padding:20px;border:1px solid var(--l2);background:var(--panel)">
               <sc-for list="{{ detailHeadline }}" as="h" hint-placeholder-count="3">
                 <div>
-                  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ h.label }}</div>
+                  <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">{{ h.label }}</div>
                   <div style="{{ h.style }}">{{ h.value }}</div>
                 </div>
               </sc-for>
             </div>
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)">Stock specifications</span>
+              <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)">Stock specifications</span>
               <span style="flex:1;height:1px;background:var(--l2)"></span>
-              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)">upgrades excluded</span>
+              <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;color:var(--faint)">upgrades excluded</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 24px">
               <sc-for list="{{ detailSpecs }}" as="s" hint-placeholder-count="12">
@@ -335,12 +365,12 @@
           <table style="width:100%;min-width:760px;font-size:13px">
             <thead>
               <tr style="background:var(--thead)">
-                <th scope="col" style="text-align:left;padding:14px;border-bottom:1px solid var(--l2);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2);position:sticky;left:0;background:var(--thead)">Attribute</th>
+                <th scope="col" style="text-align:left;padding:14px;border-bottom:1px solid var(--l2);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2);position:sticky;left:0;background:var(--thead)">Attribute</th>
                 <sc-for list="{{ compareCars }}" as="c" hint-placeholder-count="3">
                   <th scope="col" style="text-align:left;padding:14px;border-bottom:1px solid var(--l2);border-left:1px solid var(--l1);vertical-align:top">
                     <div style="font-size:14px;font-weight:600;line-height:1.2">{{ c.name }}</div>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:4px">{{ c.sub }}</div>
-                    <button onClick="{{ c.remove }}" style="margin-top:8px;padding:3px 7px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">Remove</button>
+                    <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--dim);margin-top:4px">{{ c.sub }}</div>
+                    <button onClick="{{ c.remove }}" style="margin-top:8px;padding:3px 7px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">Remove</button>
                   </th>
                 </sc-for>
               </tr>
@@ -382,7 +412,7 @@
           <div style="{{ msg.wrapStyle }}">
             <sc-if value="{{ msg.isUser }}" hint-placeholder-val="{{ false }}">
               <div style="display:flex;gap:12px;align-items:flex-start">
-                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2);padding-top:3px">You</span>
+                <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2);padding-top:3px">You</span>
                 <span style="font-size:15px;color:var(--text)">{{ msg.text }}</span>
               </div>
             </sc-if>
@@ -390,11 +420,11 @@
               <div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:18px;border:1px solid var(--l2);background:var(--panel)">
                   <div>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Your request</div>
+                    <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Your request</div>
                     <sc-for list="{{ msg.filters }}" as="f" hint-placeholder-count="3">
                       <div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--l1);font-size:13px">
                         <span style="color:var(--dim)">{{ f.label }}</span>
-                        <span style="font-family:'IBM Plex Mono',monospace;color:var(--text)">{{ f.value }}</span>
+                        <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;color:var(--text)">{{ f.value }}</span>
                       </div>
                     </sc-for>
                   </div>
@@ -404,21 +434,21 @@
                 </div>
 
                 <sc-if value="{{ msg.isRunning }}" hint-placeholder-val="{{ false }}">
-                  <div style="margin-top:14px;padding:16px;border:1px solid var(--l2);background:var(--input);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">{{ msg.runningLabel }}</div>
+                  <div style="margin-top:14px;padding:16px;border:1px solid var(--l2);background:var(--input);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">{{ msg.runningLabel }}</div>
                 </sc-if>
 
                 <sc-if value="{{ msg.isFailed }}" hint-placeholder-val="{{ false }}">
                   <div style="margin-top:14px;padding:20px;border:1px solid var(--l3);background:var(--panel)">
                     <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ msg.failTitle }}</div>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);white-space:pre-wrap">{{ msg.failDetail }}</div>
+                    <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--muted);white-space:pre-wrap">{{ msg.failDetail }}</div>
                   </div>
                 </sc-if>
 
                 <sc-if value="{{ msg.hasMatches }}" hint-placeholder-val="{{ false }}">
                   <div style="margin-top:14px">
                     <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px">
-                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--soft)">Matches</span>
-                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim2)">{{ msg.matchCount }}</span>
+                      <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--soft)">Matches</span>
+                      <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;color:var(--dim2)">{{ msg.matchCount }}</span>
                     </div>
                     <div style="overflow-x:auto;border:1px solid var(--l2);background:var(--panel)">
                       <table style="width:100%;min-width:820px;font-size:13px">
@@ -443,7 +473,7 @@
                     <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
                       <sc-for list="{{ msg.reasons }}" as="r" hint-placeholder-count="3">
                         <div style="display:flex;gap:10px;font-size:12px;color:var(--dim)">
-                          <span style="font-family:'IBM Plex Mono',monospace;color:var(--soft);min-width:180px">{{ r.car }}</span>
+                          <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;color:var(--soft);min-width:180px">{{ r.car }}</span>
                           <span>{{ r.why }}</span>
                         </div>
                       </sc-for>
@@ -454,7 +484,7 @@
                 <sc-if value="{{ msg.isEmpty }}" hint-placeholder-val="{{ false }}">
                   <div style="margin-top:14px;padding:22px;border:1px solid rgba(232,98,42,0.3);background:var(--badge)">
                     <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ msg.emptyTitle }}</div>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accentSoft);margin-bottom:16px">Most restrictive constraint: {{ msg.bottleneck }}</div>
+                    <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--accentSoft);margin-bottom:16px">Most restrictive constraint: {{ msg.bottleneck }}</div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px">
                       <sc-for list="{{ msg.relax }}" as="r" hint-placeholder-count="3">
                         <button onClick="{{ r.apply }}" style="padding:8px 12px;background:transparent;border:1px solid var(--l3);color:var(--text);font-size:12px;cursor:pointer" style-hover="border-color:var(--accent)">{{ r.label }}</button>
@@ -476,7 +506,7 @@
   </sc-if>
 
   <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
-    <main style="max-width:900px;margin:0 auto;padding:48px 20px 100px">
+    <main class="fh6-about" style="max-width:900px;margin:0 auto;padding:48px 20px 100px">
       <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">About ForzaHelper</h1>
       <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Forza Horizon 6 launched on 19 May 2026 with more than 550 cars, and the roster keeps growing through Festival Playlist, Car Pass and Aftermarket additions. I try my best to keep the data accurate and up-to-date. But, there may be a slight delay between new car additions and their appearance on ForzaHelper.</p>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
@@ -490,7 +520,7 @@
       <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Where the data comes from</h2>
       <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">I built a PostgreSQL database on Supabase to store and manage the car data for ForzaHelper. Since, there is no publically available official API for the car list, I created a partial dataset from the official car list on Forza.net. Afterwards, I manually added stats like- Power, Torque, Weight, etc from community-based forums as well as in game statistics. Yes, it was very exhausting.</p>
       <!-- <p style="margin:0 0 10px;color:var(--muted);font-size:13px;text-wrap:pretty">...</p> -->
-      <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft)">
+      <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;color:var(--soft)">
         <sc-for list="{{ dbFacts }}" as="d" hint-placeholder-count="3">
           <div style="display:flex;gap:12px"><span style="color:var(--dim2);min-width:150px">{{ d.label }}</span><span>{{ d.value }}</span></div>
         </sc-for>
@@ -525,7 +555,7 @@ const DEV_STATIC_PORTS = ["3000", "5173", "5500", "8080"];
 const DEV_API = "http://localhost:8000";
 const PAGE = 12;
 const ACCENT = "var(--accent)";
-const MONO = "'IBM Plex Mono',monospace";
+const MONO = "'Montserrat Alternates',Helvetica,Arial,sans-serif";
 const num = (n) => n == null ? null : Number(n).toLocaleString("en-US");
 const UNK = "Unknown / Not verified";
 const nn = (v) => v === "" || v == null ? null : Number(String(v).replace(/[^0-9.]/g, ""));
