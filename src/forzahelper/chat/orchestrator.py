@@ -21,7 +21,7 @@ from ..models import (
     ConversationState,
     SearchRequest,
 )
-from ..search import search_cars
+from ..search import describe_unknown, search_cars, unknown_filter_values
 from .extraction import ConstraintExtractor, get_extractor
 
 # Words that imply a threshold the user has not actually given. Rather than
@@ -56,9 +56,23 @@ def _clarification_for(message: str, filters: CarFilters) -> str | None:
 
 
 def _summarise(
-    filters: CarFilters, total: int, shown: int, relaxed_count: int
+    filters: CarFilters,
+    total: int,
+    shown: int,
+    relaxed_count: int,
+    unknown_reasons: list[str] | None = None,
 ) -> str:
     if total == 0:
+        if unknown_reasons:
+            # The request named something the dataset does not have, so this is
+            # not a near miss -- nothing could ever match it.
+            reason = " ".join(unknown_reasons)
+            if relaxed_count:
+                return (
+                    f"No eligible cars found. {reason} Here are the closest "
+                    f"alternatives, each with the constraint that had to change."
+                )
+            return f"No eligible cars found. {reason}"
         if relaxed_count:
             return (
                 "No exact matches. Here are the closest alternatives, each with "
@@ -111,11 +125,14 @@ def chat(
         relaxed = find_relaxations(filters, state.sort)
 
     clarification = _clarification_for(request.message, filters)
+    unknown_reasons = describe_unknown(unknown_filter_values(filters, settings))
 
     return ChatResponse(
-        message=_summarise(filters, response.total, response.count, len(relaxed)),
+        message=_summarise(
+            filters, response.total, response.count, len(relaxed), unknown_reasons
+        ),
         filters=filters.active(),
-        interpretations=interpretations,
+        interpretations=interpretations + unknown_reasons,
         count=response.count,
         total=response.total,
         results=response.results,

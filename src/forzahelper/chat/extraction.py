@@ -224,6 +224,11 @@ Rules:
   -> "AWD").
 - Vague words such as "cheap", "fast" or "good" have no numeric meaning. Do NOT
   guess a threshold for them -- leave the relevant field null.
+- If the user names a country, make, type or class that is NOT in the lists
+  below, record it anyway, exactly as they wrote it. Never drop a constraint
+  because its value is unfamiliar: returning no cars is the correct answer to a
+  request the data cannot satisfy, and quietly ignoring part of the request is
+  not. This is different from a vague word, which constrains nothing at all.
 
 Valid values currently present in the database:
 {vocabulary}

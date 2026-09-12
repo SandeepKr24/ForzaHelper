@@ -266,6 +266,9 @@ def search_cars(
 
     results = [CarResult.model_validate(row) for row in rows]
     warnings: list[str] = []
+    # Say so plainly when part of the request names something absent from the
+    # data, rather than returning rows that ignore it.
+    warnings.extend(describe_unknown(unknown_filter_values(request.filters, settings)))
     if not request.filters.include_unknown:
         warnings.extend(_null_warnings(request.filters))
 
@@ -444,6 +447,54 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
         "null_counts": counts,
     }
     return _filter_metadata_cache
+
+
+# filter field -> (metadata key, how to phrase it when nothing matches)
+_VALIDATED_FIELDS: dict[str, tuple[str, str]] = {
+    "country": ("country", "cars from {value}"),
+    "make": ("make", "cars made by {value}"),
+    "car_type": ("car_type", "cars of type {value}"),
+    "pi_class": ("pi_class", "cars in class {value}"),
+    "rarity": ("rarity", "cars with rarity {value}"),
+    "drivetrain": ("drivetrain", "{value} cars"),
+    "model": ("model", "a model called {value}"),
+    "acquisition_methods": ("acquisition_methods", "cars acquired via {value}"),
+}
+
+
+def unknown_filter_values(
+    filters: CarFilters, settings: Settings | None = None
+) -> dict[str, list[str]]:
+    """Requested values that do not occur anywhere in the data.
+
+    A request naming something the dataset has never heard of -- "Indian cars"
+    -- must not come back as though it were satisfied. The extractor is told to
+    keep such values rather than drop them, and this is the check that does not
+    depend on the model obeying (doc section 23 rule 10).
+    """
+    try:
+        vocabulary = filter_metadata(settings)["categorical"]
+    except Exception:  # pragma: no cover - never fail a search over a warning
+        return {}
+
+    unknown: dict[str, list[str]] = {}
+    for field, (key, _) in _VALIDATED_FIELDS.items():
+        wanted = getattr(filters, field, None) or []
+        known = {fold(str(v)).strip().lower() for v in vocabulary.get(key, [])}
+        missing = [v for v in wanted if fold(str(v)).strip().lower() not in known]
+        if missing:
+            unknown[field] = missing
+    return unknown
+
+
+def describe_unknown(unknown: dict[str, list[str]]) -> list[str]:
+    """Readable reasons, one per value the data does not contain."""
+    out = []
+    for field, values in unknown.items():
+        phrase = _VALIDATED_FIELDS[field][1]
+        for value in values:
+            out.append("The data contains no " + phrase.format(value=value) + ".")
+    return out
 
 
 def models_for_make(

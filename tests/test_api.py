@@ -364,3 +364,73 @@ def test_filter_metadata_is_one_query():
     assert metadata["categorical"]["drivetrain"] == ["AWD", "FWD", "RWD"]
     assert metadata["ranges"]["price_cr"]["max"] == 70_000_000
     assert metadata["null_counts"]["drivetrain"] == 5
+
+
+# ------------------------------------------------- values absent from the data
+#
+# A request naming something the dataset has never heard of must not come back
+# as though it were satisfied (doc section 23 rule 10).
+
+
+def test_unknown_values_are_detected():
+    from forzahelper.search import unknown_filter_values
+
+    unknown = unknown_filter_values(
+        CarFilters(country=["India", "Japan"], make=["Tesla"], drivetrain=["AWD"])
+    )
+    assert unknown == {"country": ["India"], "make": ["Tesla"]}
+
+
+def test_known_values_are_not_flagged():
+    from forzahelper.search import unknown_filter_values
+
+    filters = CarFilters(
+        country=["Japan"], make=["Audi"], drivetrain=["AWD"], pi_class=["S1"]
+    )
+    assert unknown_filter_values(filters) == {}
+
+
+def test_unknown_values_are_matched_accent_insensitively():
+    from forzahelper.search import unknown_filter_values
+
+    # "Coupe" exists only as "Coupé"; it must not be reported as absent.
+    assert unknown_filter_values(CarFilters(model=["M4 Coupe"])) == {}
+
+
+def test_search_warns_about_values_the_data_lacks():
+    response = search_cars(
+        SearchRequest(filters=CarFilters(country=["India"], price_cr_min=10000))
+    )
+    assert response.total == 0
+    assert any("no cars from India" in w for w in response.warnings)
+
+
+def test_chat_says_no_eligible_cars_for_an_absent_value():
+    from forzahelper.chat.orchestrator import chat
+
+    class _Stub:
+        """Stands in for a model that kept the unfamiliar value, as instructed."""
+
+        def extract(self, message, current):
+            return CarFilters(country=["India"], price_cr_min=10000)
+
+    response = chat(ChatRequest(message="Indian cars above 10k credits"), _Stub())
+
+    assert response.total == 0
+    assert response.message.startswith("No eligible cars found.")
+    assert "no cars from India" in response.message
+    # The reason is structured too, not only in the prose.
+    assert any("India" in note for note in response.interpretations)
+
+
+def test_a_satisfiable_request_is_unaffected():
+    from forzahelper.chat.orchestrator import chat
+
+    class _Stub:
+        def extract(self, message, current):
+            return CarFilters(country=["Japan"], drivetrain=["AWD"])
+
+    response = chat(ChatRequest(message="Japanese AWD cars"), _Stub())
+    assert response.total > 0
+    assert "No eligible cars" not in response.message
+    assert not any("contains no" in note for note in response.interpretations)

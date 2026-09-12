@@ -446,7 +446,7 @@
 
                 <sc-if value="{{ msg.isEmpty }}" hint-placeholder-val="{{ false }}">
                   <div style="margin-top:14px;padding:22px;border:1px solid rgba(232,98,42,0.3);background:var(--badge)">
-                    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Query returned zero rows</div>
+                    <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ msg.emptyTitle }}</div>
                     <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accentSoft);margin-bottom:16px">Most restrictive constraint: {{ msg.bottleneck }}</div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px">
                       <sc-for list="{{ msg.relax }}" as="r" hint-placeholder-count="3">
@@ -750,27 +750,33 @@ class Component extends DCLogic {
   // Removable chips describing the active filters, built from UI state.
   activeChips(f) {
     const out = [];
-    const add = (k, label) => { if (f[k]) out.push({k: k, label: label}); };
-    if (f.q) out.push({k: "q", label: 'text "' + f.q + '"'});
-    add("make", "make " + f.make);
-    add("model", "model " + f.model);
-    add("cls", "class " + f.cls);
-    add("dt", "drivetrain " + f.dt);
-    add("type", "type " + f.type);
-    add("country", "country " + f.country);
-    add("rarity", "rarity " + f.rarity);
+    const push = (k, name, value) => out.push({k: k, name: name, value: value, label: name + " " + value});
+    const add = (k, name) => { if (f[k]) push(k, name, f[k]); };
+    if (f.q) push("q", "Text", '"' + f.q + '"');
+    add("make", "Make");
+    add("model", "Model");
+    add("cls", "Class");
+    add("dt", "Drivetrain");
+    add("type", "Type");
+    add("country", "Country");
+    add("rarity", "Rarity");
     const u = this.u();
-    const rng = (key, label, unit) => {
+    // Both ends of every range, so nothing the user asked for goes unlisted.
+    // Years and PI are plain numbers; everything else reads better grouped.
+    const rng = (key, name, unit, fmt) => {
+      const f2 = fmt || num;
       const lo = nn(f[key + "Min"]), hi = nn(f[key + "Max"]);
-      if (lo != null) out.push({k: key + "Min", label: label + " >= " + num(lo) + unit});
-      if (hi != null) out.push({k: key + "Max", label: label + " <= " + num(hi) + unit});
+      if (lo != null && hi != null) { push(key + "Min", name, f2(lo) + "-" + f2(hi) + unit); return; }
+      if (lo != null) push(key + "Min", name, ">= " + f2(lo) + unit);
+      if (hi != null) push(key + "Max", name, "<= " + f2(hi) + unit);
     };
-    rng("pi", "PI", "");
-    rng("year", "year", "");
-    rng("price", "value", " Cr");
-    rng("hp", "power", " hp");
-    rng("wt", "weight", " " + u.wt.unit);
-    rng("tq", "torque", " " + u.tq.unit);
+    const plain = (v) => String(v);
+    rng("pi", "PI", "", plain);
+    rng("year", "Year", "", plain);
+    rng("price", "Value", " Cr");
+    rng("hp", "Power", " hp");
+    rng("wt", "Weight", " " + u.wt.unit);
+    rng("tq", "Torque", " " + u.tq.unit);
     return out;
   }
 
@@ -1162,17 +1168,7 @@ class Component extends DCLogic {
       if (m.kind === "user") return {isUser: true, isResult: false, text: m.text, wrapStyle: "animation:fh6in .3s ease both"};
       const pf = m.parsed.f, matched = m.rows || [];
       const ms = msgStatus[m.status] || msgStatus.running;
-      const filters = [];
-      if (pf.yearMin || pf.yearMax) filters.push({label: "year", value: pf.yearMin && pf.yearMax ? pf.yearMin + "–" + pf.yearMax : pf.yearMin ? "≥ " + pf.yearMin : "≤ " + pf.yearMax});
-      if (pf.priceMax) filters.push({label: "Value (Cr)", value: "≤ " + num(Number(pf.priceMax))});
-      if (pf.hpMin || pf.hpMax) filters.push({label: "Power (HP)", value: (pf.hpMin ? num(Number(pf.hpMin)) : "0") + "–" + (pf.hpMax ? num(Number(pf.hpMax)) : "∞")});
-      if (pf.dt) filters.push({label: "Drivetrain", value: pf.dt});
-      if (pf.wtMax) filters.push({label: "Weight (" + uCfg.wt.unit + ")", value: "≤ " + num(Number(pf.wtMax))});
-      if (pf.make) filters.push({label: "Make", value: pf.make});
-      if (pf.country) filters.push({label: "Country", value: pf.country});
-      if (pf.cls) filters.push({label: "Class", value: pf.cls});
-      if (pf.type) filters.push({label: "Type", value: pf.type});
-      if (pf.q) filters.push({label: "ILIKE", value: pf.q});
+      const filters = this.activeChips(pf).map(c => ({label: c.name, value: c.value}));
       const mDiag = m.diagnosis;
       return {
         isUser: false, isResult: true, wrapStyle: "animation:fh6in .3s ease both",
@@ -1187,6 +1183,9 @@ class Component extends DCLogic {
         failDetail: m.errorMsg || "",
         hasMatches: m.status === "ok" && matched.length > 0,
         isEmpty: m.status === "ok" && matched.length === 0,
+        // The backend says why nothing matched -- an absent country reads very
+        // differently from an over-tight budget.
+        emptyTitle: m.summary || "No cars matched those constraints",
         matchCount: num(matched.length) + (matched.length === 1 ? " row" : " rows"),
         matches: matched.map(c => ({cells: chatCols.map(k => this.cellFor(c, k, "11px 12px")), open: () => this.openCar(c.id)})),
         reasons: matched.map(c => {
