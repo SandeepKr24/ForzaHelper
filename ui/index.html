@@ -590,9 +590,9 @@ class Component extends DCLogic {
   }
 
   componentDidMount() {
-    // A reload should open on the hero, not wherever the reader happened to be
-    // scrolled to. Browsers restore the previous offset by default, so opt out
-    // and start at the top. Done before anything renders, to avoid a visible jump.
+    // Browsers restore the previous scroll offset on reload. Opt out, so the
+    // page opens where it should rather than where the reader last happened to
+    // be: the hero by default, or the results if the URL carries filters.
     try {
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.scrollTo(0, 0);
@@ -609,6 +609,9 @@ class Component extends DCLogic {
       Object.keys(f).forEach(k => { if (p.get(k)) { f[k] = p.get(k); touched = true; } });
       const v = p.get("view");
       if (touched || v) this.setState({f, view: v && v !== "detail" ? v : this.state.view});
+      // A link carrying filters is a link to results, so open on the table.
+      // A plain reload has no filters in the URL and still starts at the hero.
+      if (touched) this.jumpToTable();
     } catch (e) {}
     this.load();
     this.loadFacets();
@@ -625,6 +628,20 @@ class Component extends DCLogic {
       else if (e.deltaY < 0 && y > 4 && y <= target + 4) { e.preventDefault(); this._snapLock = now; doc.scrollTo({top: 0, behavior: "smooth"}); }
     };
     window.addEventListener("wheel", this._onWheel, {passive: false});
+  }
+
+  // Opens the page at the results rather than scrolling there. Two frames, so
+  // the hero has been laid out and its height is final before we measure it.
+  jumpToTable() {
+    if (typeof requestAnimationFrame !== "function") return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const hero = document.getElementById("fh6-hero");
+      const doc = document.scrollingElement || document.documentElement;
+      if (!hero || !doc) return;
+      // Keep the wheel-snap handler from bouncing us straight back up.
+      this._snapLock = Date.now();
+      doc.scrollTo({top: Math.max(0, hero.offsetTop + hero.offsetHeight - 60), behavior: "auto"});
+    }));
   }
 
   componentWillUnmount() {
