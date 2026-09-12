@@ -365,7 +365,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between">
         <div>
           <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Car Finder</h1>
-          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">Describe the car you want. Your request is sent to the ForzaHelper API, which resolves it into structured filters and runs them against Postgres. The filters and the request are always shown, and results are never summarised away.</p>
+          <p style="margin:8px 0 0;color:var(--muted);max-width:64ch">Describe the car you want. Your request is sent to the ForzaHelper API, which resolves it into structured filters and runs them against Postgres. The filters it resolved are always shown, and results are never summarised away.</p>
         </div>
         <button onClick="{{ clearChat }}" style="padding:8px 12px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-size:12px;cursor:pointer" style-hover="color:var(--ink)">Clear session</button>
       </div>
@@ -396,15 +396,9 @@
                   </div>
                 </div>
 
-                <div style="margin-top:14px;border:1px solid var(--l2);background:var(--input)">
-                  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--l2)">
-                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim2)">Request sent</span>
-                    <span style="{{ msg.statusStyle }}">{{ msg.statusLabel }}</span>
-                    <button onClick="{{ msg.copySql }}" style="margin-left:auto;padding:4px 9px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">{{ msg.copyLabel }}</button>
-                    <button onClick="{{ msg.rerun }}" style="padding:4px 9px;background:transparent;border:1px solid var(--l3);color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--ink);border-color:var(--accent)">Re-run</button>
-                  </div>
-                  <pre style="margin:0;padding:14px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6;color:var(--soft);white-space:pre">{{ msg.sql }}</pre>
-                </div>
+                <sc-if value="{{ msg.isRunning }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;padding:16px;border:1px solid var(--l2);background:var(--input);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);animation:fh6pulse 1.4s ease-in-out infinite">{{ msg.runningLabel }}</div>
+                </sc-if>
 
                 <sc-if value="{{ msg.isFailed }}" hint-placeholder-val="{{ false }}">
                   <div style="margin-top:14px;padding:20px;border:1px solid var(--l3);background:var(--panel)">
@@ -1183,12 +1177,11 @@ class Component extends DCLogic {
       return {
         isUser: false, isResult: true, wrapStyle: "animation:fh6in .3s ease both",
         filters, notes: m.parsed.notes.map(t => ({text: t})),
-        sql: m.request || "",
-        statusLabel: ms.label,
-        statusStyle: "font-family:" + MONO + ";font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:" + ms.color,
-        copyLabel: "Copy",
-        copySql: () => { try { navigator.clipboard.writeText(m.request || ""); } catch (e) {} },
-        rerun: () => this.rerunMsg(m.id, pf),
+        // The request payload is no longer shown: the resolved filters and the
+        // rows are what the reader needs, and the raw JSON carried conversation
+        // state that only added noise.
+        isRunning: m.status === "running",
+        runningLabel: (m.rows && m.rows.length ? "Searching" : "Interpreting your request") + String.fromCharCode(8230),
         isFailed: m.status === "error" || m.status === "unconfigured",
         failTitle: m.status === "unconfigured" ? "Not executed — no API connected" : "The request failed",
         failDetail: m.errorMsg || "",
