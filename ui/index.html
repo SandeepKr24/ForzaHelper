@@ -115,9 +115,11 @@
 
   <header style="position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding:8px 20px;min-height:60px;background:var(--headerBg);backdrop-filter:blur(10px);border-bottom:1px solid var(--l2)">
     <div style="display:flex;align-items:center;gap:10px;min-width:0">
-      <img class="fh6-logo-dark" src="icons/logo-dark.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
-      <img class="fh6-logo-light" src="icons/logo-light.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
-      <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap">Forza Helper</div>
+      <a href="https://forza-helper-beryl.vercel.app/" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap" style-hover="color:var(--accent)">
+        <img class="fh6-logo-dark" src="icons/logo-dark.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
+        <img class="fh6-logo-light" src="icons/logo-light.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
+        Forza Helper
+      </a>
     </div>
     <nav style="display:flex;flex-wrap:wrap;gap:2px;flex:0 1 auto;min-width:0">
       <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="2">
@@ -603,7 +605,7 @@ const EMPTY_CAR = {id:"",make:"",model:"â€”",year:null,price:null,pi:null,cls:"â
 
 class Component extends DCLogic {
   state = {
-    view: "explorer", detailId: null, compare: [], searchText: "", chatDraft: "", messages: [],
+    view: "explorer", detailId: null, atTable: false, compare: [], searchText: "", chatDraft: "", messages: [],
     columns: DEFAULT_COLS.slice(), columnsOpen: false, sortKey: "pi", sortDir: -1, page: 0,
     rows: [], total: 0, status: "loading", statusNote: "Searching", errorMsg: "", sql: "", diagnosis: undefined, relaxed: [], warnings: [],
     sqlOpen: false, copied: false, theme: "dark",
@@ -659,11 +661,26 @@ class Component extends DCLogic {
       else if (e.deltaY < 0 && y > 4 && y <= target + 4) { e.preventDefault(); this._snapLock = now; doc.scrollTo({top: 0, behavior: "smooth"}); }
     };
     window.addEventListener("wheel", this._onWheel, {passive: false});
+
+    // Tracks whether the table is in view, which decides the Cars underline.
+    // "In view" means the table fills at least half the screen.
+    this._onScroll = () => {
+      if (this.state.view !== "explorer") return;
+      const hero = document.getElementById("fh6-hero");
+      const doc = document.scrollingElement || document.documentElement;
+      if (!hero || !doc) return;
+      const tableTop = hero.offsetTop + hero.offsetHeight - 60;
+      const atTable = doc.scrollTop >= tableTop - window.innerHeight / 2;
+      // A Cars click is still scrolling down; don't flip back mid-way.
+      if (!atTable && this._carsClickAt && Date.now() - this._carsClickAt < 1000) return;
+      if (atTable !== !!this.state.atTable) this.setState({atTable});
+    };
+    window.addEventListener("scroll", this._onScroll, {passive: true});
   }
 
   // Opens the page at the results rather than scrolling there. Two frames, so
   // the hero has been laid out and its height is final before we measure it.
-  jumpToTable() {
+  jumpToTable(behavior = "auto") {
     if (typeof requestAnimationFrame !== "function") return;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const hero = document.getElementById("fh6-hero");
@@ -671,12 +688,21 @@ class Component extends DCLogic {
       if (!hero || !doc) return;
       // Keep the wheel-snap handler from bouncing us straight back up.
       this._snapLock = Date.now();
-      doc.scrollTo({top: Math.max(0, hero.offsetTop + hero.offsetHeight - 60), behavior: "auto"});
+      doc.scrollTo({top: Math.max(0, hero.offsetTop + hero.offsetHeight - 60), behavior});
     }));
   }
 
+  // The Cars nav item: show the explorer with its table in view. Smooth when
+  // already on the page; instant when arriving from another view.
+  goCars = () => {
+    const already = this.state.view === "explorer";
+    this._carsClickAt = Date.now();
+    this.setState({view: "explorer", detailId: null, atTable: true}, () => this.jumpToTable(already ? "smooth" : "auto"));
+  };
+
   componentWillUnmount() {
     if (this._onWheel) window.removeEventListener("wheel", this._onWheel);
+    if (this._onScroll) window.removeEventListener("scroll", this._onScroll);
     clearTimeout(this._qTimer);
   }
 
@@ -952,7 +978,8 @@ class Component extends DCLogic {
     try { localStorage.setItem("fh6-units", units); } catch (e) {}
   };
 
-  go = (view) => this.setState({view, detailId: view === "detail" ? this.state.detailId : null});
+  go = (view) => this.setState({view, detailId: view === "detail" ? this.state.detailId : null},
+    () => { if (this._onScroll) this._onScroll(); });
   openCar = (id) => this.setState({view: "detail", detailId: id});
   toggleCompare = (id) => {
     const c = this.state.compare.includes(id) ? this.state.compare.filter(x => x !== id) : this.state.compare.concat([id]).slice(-4);
@@ -1103,8 +1130,11 @@ class Component extends DCLogic {
     const page = Math.min(s.page, pages - 1);
     const connected = this.configured();
 
-    const navStyle = (v) => "padding:8px 12px;background:transparent;border:0;border-bottom:2px solid " + (s.view === v ? ACCENT : "transparent") +
-      ";color:" + (s.view === v ? "var(--ink)" : "var(--dim)") + ";font-size:13px;cursor:pointer;white-space:nowrap";
+    // Cars counts as current only once the table is in view, whether it was
+    // clicked or scrolled to. On first load the hero shows, so nothing is.
+    const navActive = (v) => v === "explorer" ? s.view === "explorer" && !!s.atTable : s.view === v;
+    const navStyle = (v) => "padding:8px 12px;background:transparent;border:0;border-bottom:2px solid " + (navActive(v) ? ACCENT : "transparent") +
+      ";color:" + (navActive(v) ? "var(--ink)" : "var(--dim)") + ";font-size:13px;cursor:pointer;white-space:nowrap";
 
     const mkSelect = (key, label, options) => ({
       label, value: f[key],
@@ -1248,7 +1278,7 @@ class Component extends DCLogic {
     return {
       // Compare and Car Finder are omitted here: both have a dedicated button on
       // the right of the header, and Compare's also carries the selection count.
-      navItems: [["explorer","Cars"],["about","About / Data"]].map(([v, label]) => ({label, style: navStyle(v), go: () => this.go(v)})),
+      navItems: [["explorer","Cars"],["about","About / Data"]].map(([v, label]) => ({label, style: navStyle(v), go: () => v === "explorer" ? this.goCars() : this.go(v)})),
       compareCount: String(s.compare.length),
       goCompare: () => this.go("compare"), goChat: () => this.go("chat"), goExplorer: () => this.go("explorer"),
       theme: s.theme,

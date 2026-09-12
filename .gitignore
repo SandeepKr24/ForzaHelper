@@ -36,6 +36,8 @@ readme.md
 **/readme.md
 README.*
 **/README.*
+# Except the root README, which is the project's public description.
+!/README.md
 
 # ---------------------------------------------------------------------------
 # Python
