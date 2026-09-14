@@ -14,8 +14,131 @@
 <link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-dark-48.png" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-light-48.png" media="(prefers-color-scheme: light)">
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<!-- Same stylesheet the app loads; requested here too so the intro's text is
+     in its real font from the first frame. -->
+<link id="fh6-fonts" href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@400;500;600;700&family=Bungee+Tint&family=Kumbh+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Intro: a dark screen where the logo and name fade in, then drift into the
+     header's logo while the page fades in beneath. Sizes are the header
+     brand's scaled by 68/26, so the shrink lands exactly on it. */
+  #fh6-intro { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  #fh6-intro::before { content:""; position:absolute; inset:0; background:#0a0b0c; transition:opacity .9s ease .15s; }
+  #fh6-intro.fh6-reveal::before { opacity:0; }
+  #fh6-intro.fh6-reveal { pointer-events:none; }
+  .fh6-intro-brand {
+    position:relative; display:flex; align-items:center; gap:26.15px;
+    color:#e9e7e4; font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif; font-weight:600;
+    font-size:31.38px; line-height:1.45; letter-spacing:0.16em; text-transform:uppercase; white-space:nowrap;
+    opacity:0; filter:blur(8px); translate:0 12px; transform-origin:0 0;
+    transition:opacity 1s cubic-bezier(.2,.7,.3,1), filter 1s ease, translate 1s cubic-bezier(.2,.7,.3,1);
+  }
+  .fh6-intro-logo { position:relative; width:68px; height:68px; flex:0 0 auto; }
+  .fh6-intro-logo img { position:absolute; inset:0; width:100%; height:100%; transition:opacity .3s ease .6s; }
+  .fh6-intro-logo img + img { opacity:0; }
+  .fh6-intro-brand.fh6-in { opacity:1; filter:blur(0); translate:0 0; }
+  .fh6-intro-brand.fh6-drift { transition:transform .9s cubic-bezier(.65,0,.25,1), opacity .35s ease, color .3s ease .6s; }
+  /* Light theme: on the way to the header, take on its dark text and light
+     logo, so the name stays legible as the light page fades in behind it.
+     The switch waits until the dark backdrop has mostly faded (0.6s in), then
+     happens quickly; switching earlier puts dark text on a dark screen. */
+  .fh6-intro-brand.fh6-light { color:#1e2022; }
+  .fh6-intro-brand.fh6-light .fh6-intro-logo img + img { opacity:1; }
+  .fh6-intro-brand.fh6-out { opacity:0; }
+  /* The real header brand waits hidden until the intro copy arrives on it. */
+  header > div:first-child > a { transition:opacity .35s ease; }
+  html.fh6-intro-on header > div:first-child > a { opacity:0; }
+  @media (max-width: 560px) {
+    .fh6-intro-brand { font-size:22px; gap:18.3px; }
+    .fh6-intro-logo { width:48px; height:48px; }
+  }
+</style>
 </head>
 <body>
+<div id="fh6-intro" aria-hidden="true">
+  <div class="fh6-intro-brand"><span class="fh6-intro-logo"><img src="./icons/logo-dark.png" alt=""><img src="./icons/logo-light.png" alt=""></span>Forza Helper</div>
+</div>
+<script>
+  // Plays once per browser tab. Skipped for links that carry filters or a view,
+  // and when reduced motion is requested. A click or key press skips ahead.
+  (function () {
+    var intro = document.getElementById("fh6-intro");
+    var root = document.documentElement;
+    var brand = intro.querySelector(".fh6-intro-brand");
+    var removed = false, revealed = false;
+    function remove() {
+      if (removed) return;
+      removed = true;
+      root.classList.remove("fh6-intro-on");
+      if (intro.parentNode) intro.parentNode.removeChild(intro);
+    }
+    var skip = false;
+    try {
+      skip = !!location.search || sessionStorage.getItem("fh6-intro-seen") === "1" ||
+        (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+      sessionStorage.setItem("fh6-intro-seen", "1");
+    } catch (e) {}
+    if (skip) { remove(); return; }
+    root.classList.add("fh6-intro-on");
+
+    var started = Date.now();
+    function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+    function headerBrand() { return document.querySelector("header > div:first-child > a"); }
+    function visibleImg(el) {
+      var imgs = el ? el.querySelectorAll("img") : [];
+      for (var i = 0; i < imgs.length; i++) if (imgs[i].getBoundingClientRect().width) return imgs[i];
+      return null;
+    }
+    function fontsReady() {
+      var link = document.getElementById("fh6-fonts");
+      var sheet = new Promise(function (r) {
+        if (!link || link.sheet) r();
+        else { link.addEventListener("load", r); link.addEventListener("error", r); }
+      });
+      var face = sheet.then(function () {
+        return document.fonts ? document.fonts.load("600 31px 'Montserrat Alternates'") : null;
+      });
+      return Promise.race([face, wait(1500)]).catch(function () {});
+    }
+    function untilHeader(limit) {
+      return new Promise(function (r) {
+        (function poll() {
+          var img = visibleImg(headerBrand());
+          if (img || Date.now() - started > limit) r(img);
+          else requestAnimationFrame(poll);
+        })();
+      });
+    }
+
+    function reveal(target) {
+      if (revealed) return;
+      revealed = true;
+      var app = document.querySelector("[data-theme]");
+      if (app && app.getAttribute("data-theme") === "light") brand.classList.add("fh6-light");
+      if (target) {
+        // Move and shrink the intro brand so its logo sits on the header logo.
+        var from = brand.getBoundingClientRect(), logo = brand.querySelector("img").getBoundingClientRect();
+        var to = target.getBoundingClientRect();
+        var s = to.width / logo.width;
+        var dx = to.left - from.left - (logo.left - from.left) * s;
+        var dy = (to.top + to.height / 2) - from.top - (logo.top + logo.height / 2 - from.top) * s;
+        brand.classList.add("fh6-drift");
+        brand.style.transform = "translate(" + dx + "px," + dy + "px) scale(" + s + ")";
+      }
+      intro.classList.add("fh6-reveal");
+      setTimeout(function () { root.classList.remove("fh6-intro-on"); brand.classList.add("fh6-out"); }, target ? 850 : 0);
+      setTimeout(remove, 1300);
+    }
+
+    fontsReady().then(function () {
+      brand.classList.add("fh6-in");
+      return Promise.all([untilHeader(6000), wait(1400)]);
+    }).then(function (res) { reveal(res[0]); });
+
+    function hurry() { brand.classList.add("fh6-in"); reveal(visibleImg(headerBrand())); }
+    intro.addEventListener("click", hurry);
+    window.addEventListener("keydown", hurry, { once: true });
+  })();
+</script>
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,6 +183,51 @@
   .fh6-logo-light { display:none; }
   [data-theme="light"] .fh6-logo-dark { display:none; }
   [data-theme="light"] .fh6-logo-light { display:block; }
+  /* Buttons: rounded, with a raised look (a top highlight, a darker lower edge
+     and a soft drop shadow) that lifts on hover and presses in on click. It is
+     all box-shadow, so it works over whatever background a button sets inline.
+     Tabs, text-style buttons and the pieces of grouped controls opt out with
+     .fh6-flat; their group carries the effect instead. */
+  :root { --btnHi:rgba(255,255,255,0.10); --btnLo:rgba(0,0,0,0.45); --btnDrop:rgba(0,0,0,0.6); }
+  [data-theme="light"] { --btnHi:rgba(255,255,255,0.75); --btnLo:rgba(0,0,0,0.13); --btnDrop:rgba(70,45,20,0.25); }
+  button:not(.fh6-flat), .fh6-seg {
+    border-radius:8px;
+    box-shadow:inset 0 1px 0 var(--btnHi), inset 0 -2px 0 var(--btnLo), 0 2px 0 var(--btnLo), 0 4px 10px -3px var(--btnDrop);
+  }
+  button:not(.fh6-flat):hover {
+    transform:translateY(-1px);
+    box-shadow:inset 0 1px 0 var(--btnHi), inset 0 -2px 0 var(--btnLo), 0 3px 0 var(--btnLo), 0 8px 16px -4px var(--btnDrop);
+  }
+  button:not(.fh6-flat):active {
+    transform:translateY(2px);
+    box-shadow:inset 0 1px 0 var(--btnHi), inset 0 1px 3px var(--btnLo), 0 0 0 var(--btnLo), 0 1px 3px -1px var(--btnDrop);
+  }
+  .fh6-seg { overflow:hidden; }
+  /* An input and its button fused into one bar: the bar is rounded and the
+     button keeps its bevel but not its own corners. */
+  .fh6-joined { border-radius:10px; overflow:hidden; box-shadow:0 6px 18px -8px var(--btnDrop); }
+  .fh6-joined > button { box-shadow:inset 0 1px 0 var(--btnHi), inset 0 -2px 0 var(--btnLo); }
+  .fh6-joined > button:active { transform:none; box-shadow:inset 0 2px 5px var(--btnLo); }
+
+  /* Page entrance, matching the hero: each section of a page rises in turn.
+     Fill mode is backwards, not both: sections wait hidden during their delay,
+     and once finished no leftover transform stays on them (a lingering one
+     would change how fixed and sticky content inside them behaves). */
+  .fh6-page > * { animation:fh6rise .6s cubic-bezier(.2,.7,.3,1) backwards; }
+  .fh6-page > :nth-child(2) { animation-delay:.07s; }
+  .fh6-page > :nth-child(3) { animation-delay:.14s; }
+  .fh6-page > :nth-child(4) { animation-delay:.21s; }
+  .fh6-page > :nth-child(n+5) { animation-delay:.28s; }
+  /* Cards in a grid follow one after another. */
+  .fh6-stagger > :not(sc-for), .fh6-stagger > sc-for > * { animation:fh6rise .55s cubic-bezier(.2,.7,.3,1) backwards; }
+  .fh6-stagger > :nth-child(1), .fh6-stagger > sc-for > :nth-child(1) { animation-delay:.2s; }
+  .fh6-stagger > :nth-child(2), .fh6-stagger > sc-for > :nth-child(2) { animation-delay:.27s; }
+  .fh6-stagger > :nth-child(3), .fh6-stagger > sc-for > :nth-child(3) { animation-delay:.34s; }
+  .fh6-stagger > :nth-child(n+4), .fh6-stagger > sc-for > :nth-child(n+4) { animation-delay:.41s; }
+
+  /* The wheel that trails the mouse pointer (created in mountWheel). */
+  .fh6-wheel { position:fixed; left:0; top:0; width:28px; height:28px; pointer-events:none; z-index:9999; opacity:0; transition:opacity .2s ease; will-change:transform; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
+
   html, body { margin:0; padding:0; background:var(--bg); }
   html { scroll-padding-top: 60px; }
   * { box-sizing: border-box; }
@@ -123,7 +291,7 @@
 
   <header style="position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding:8px 20px;min-height:60px;background:var(--headerBg);backdrop-filter:blur(10px);border-bottom:1px solid var(--l2)">
     <div style="display:flex;align-items:center;gap:10px;min-width:0">
-      <a href="https://forza-helper-beryl.vercel.app/" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap" style-hover="color:var(--accent)">
+      <a href="./" style="display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;white-space:nowrap" style-hover="color:var(--accent)">
         <img class="fh6-logo-dark" src="icons/logo-dark.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
         <img class="fh6-logo-light" src="icons/logo-light.png" alt="" width="26" height="26" style="width:26px;height:26px;flex:0 0 auto">
         Forza Helper
@@ -131,13 +299,13 @@
     </div>
     <nav style="display:flex;flex-wrap:wrap;gap:2px;flex:0 1 auto;min-width:0">
       <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="2">
-        <button onClick="{{ item.go }}" style="{{ item.style }}" style-hover="color:var(--ink)">{{ item.label }}</button>
+        <button class="fh6-flat" onClick="{{ item.go }}" style="{{ item.style }}" style-hover="color:var(--ink)">{{ item.label }}</button>
       </sc-for>
     </nav>
     <div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px 10px;margin-left:auto;flex:0 1 auto;min-width:0">
-      <div style="display:flex;flex:0 0 auto;border:1px solid var(--l3)" role="group" aria-label="Measurement units">
+      <div class="fh6-seg" style="display:flex;flex:0 0 auto;border:1px solid var(--l3)" role="group" aria-label="Measurement units">
         <sc-for list="{{ unitOptions }}" as="u" hint-placeholder-count="2">
-          <button onClick="{{ u.onClick }}" style="{{ u.style }}">{{ u.label }}</button>
+          <button class="fh6-flat" onClick="{{ u.onClick }}" style="{{ u.style }}">{{ u.label }}</button>
         </sc-for>
       </div>
       <button onClick="{{ toggleTheme }}" aria-label="Toggle colour theme" style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--l3);color:var(--soft);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:13px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--ink)">{{ themeGlyph }}</button>
@@ -157,9 +325,9 @@
           <div style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);margin-bottom:22px;animation:fh6rise .55s cubic-bezier(.2,.7,.3,1) both">Forza Horizon 6 · Car intelligence</div>
           <h1 class="fh6-title" style="margin:0;font-size:clamp(42px,6.6vw,92px);line-height:0.94;font-weight:400;letter-spacing:0;text-wrap:balance;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .07s both">Every car, every stat,<br>one query away.</h1>
           <p style="margin:26px auto 0;max-width:56ch;color:var(--muted);font-size:17px;text-wrap:pretty;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .16s both">Filter the roster on stock specifications, compare upto 4 cars side by side, or describe what you want in English and let the Car Finder work its magic.</p>
-          <div style="display:flex;gap:0;margin:38px auto 0;max-width:720px;border:1px solid var(--l3);background:var(--input);animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .25s both">
+          <div class="fh6-joined" style="display:flex;gap:0;margin:38px auto 0;max-width:720px;border:1px solid var(--l3);background:var(--input);animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .25s both">
             <input value="{{ searchText }}" onChange="{{ onSearchInput }}" onKeyDown="{{ onSearchKey }}" placeholder="e.g. AWD cars around 500 hp under 100k" style="flex:1;min-width:0;padding:18px 20px;background:transparent;border:0;color:var(--text);font-size:16px;outline:none" />
-            <button onClick="{{ runSearch }}" style="padding:0 26px;background:var(--accent);border:0;color:var(--onAccent);font-size:14px;font-weight:600;letter-spacing:0.04em;cursor:pointer;white-space:nowrap" style-hover="background:var(--accentHi)">Find a car</button>
+            <button class="fh6-flat" onClick="{{ runSearch }}" style="padding:0 26px;background:var(--accent);border:0;color:var(--onAccent);font-size:14px;font-weight:600;letter-spacing:0.04em;cursor:pointer;white-space:nowrap" style-hover="background:var(--accentHi)">Find a car</button>
           </div>
           <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:14px auto 0;max-width:720px;animation:fh6rise .65s cubic-bezier(.2,.7,.3,1) .34s both">
             <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="3">
@@ -176,7 +344,7 @@
           <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:13px;color:var(--faint2)">⌕</span>
           <input value="{{ tableQuery }}" onChange="{{ onTableQuery }}" onKeyDown="{{ onTableQueryKey }}" placeholder="Search make, model or car type" style="flex:1;min-width:0;padding:11px 0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none" />
           <sc-if value="{{ hasTableQuery }}" hint-placeholder-val="{{ false }}">
-            <button onClick="{{ clearTableQuery }}" aria-label="Clear search" style="background:transparent;border:0;color:var(--dim);font-size:14px;cursor:pointer;padding:0" style-hover="color:var(--ink)">×</button>
+            <button class="fh6-flat" onClick="{{ clearTableQuery }}" aria-label="Clear search" style="background:transparent;border:0;color:var(--dim);font-size:14px;cursor:pointer;padding:0" style-hover="color:var(--ink)">×</button>
           </sc-if>
         </div>
         <button onClick="{{ toggleFilters }}" style="{{ filterBtnStyle }}" style-hover="border-color:var(--l4);color:var(--ink)">
@@ -310,8 +478,8 @@
   </sc-if>
 
   <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
-    <main style="max-width:1360px;margin:0 auto;padding:32px 20px 90px">
-      <button onClick="{{ goExplorer }}" style="padding:0;background:transparent;border:0;color:var(--dim);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--accent)">← Back to explorer</button>
+    <main class="fh6-page" style="max-width:1360px;margin:0 auto;padding:32px 20px 90px">
+      <button class="fh6-flat" onClick="{{ goExplorer }}" style="padding:0;background:transparent;border:0;color:var(--dim);font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer" style-hover="color:var(--accent)">← Back to explorer</button>
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:34px;margin-top:22px">
         <div class="fh6-detail-cols" style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.5fr);gap:34px;align-items:start">
           <div>
@@ -367,7 +535,7 @@
   </sc-if>
 
   <sc-if value="{{ isCompare }}" hint-placeholder-val="{{ false }}">
-    <main style="max-width:1560px;margin:0 auto;padding:40px 20px 90px">
+    <main class="fh6-page" style="max-width:1560px;margin:0 auto;padding:40px 20px 90px">
       <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Compare</h1>
       <p style="margin:10px 0 26px;color:var(--muted);max-width:62ch">Differences are marked, not ranked — the highest figure in a row is not necessarily the better car for your event, surface, or class target.</p>
       <sc-if value="{{ hasCompare }}" hint-placeholder-val="{{ false }}">
@@ -408,7 +576,7 @@
   </sc-if>
 
   <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
-    <main style="max-width:1180px;margin:0 auto;padding:40px 20px 120px">
+    <main class="fh6-page" style="max-width:1180px;margin:0 auto;padding:40px 20px 120px">
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between">
         <div>
           <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">Car Finder</h1>
@@ -508,18 +676,18 @@
         </sc-for>
       </div>
 
-      <div style="position:sticky;bottom:24px;display:flex;border:1px solid var(--l3);background:var(--input)">
+      <div class="fh6-joined" style="position:sticky;bottom:24px;display:flex;border:1px solid var(--l3);background:var(--input)">
         <input value="{{ chatDraft }}" onChange="{{ onChatInput }}" onKeyDown="{{ onChatKey }}" placeholder="I need something from 2000+, AWD stock, under 90k CR, and around 450 HP." style="flex:1;min-width:0;padding:16px 18px;background:transparent;border:0;color:var(--text);font-size:15px;outline:none" />
-        <button onClick="{{ sendChat }}" style="padding:0 24px;background:var(--accent);border:0;color:var(--onAccent);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--accentHi)">Send</button>
+        <button class="fh6-flat" onClick="{{ sendChat }}" style="padding:0 24px;background:var(--accent);border:0;color:var(--onAccent);font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--accentHi)">Send</button>
       </div>
     </main>
   </sc-if>
 
   <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
-    <main class="fh6-about" style="max-width:900px;margin:0 auto;padding:48px 20px 100px">
+    <main class="fh6-about fh6-page" style="max-width:900px;margin:0 auto;padding:48px 20px 100px">
       <h1 style="margin:0;font-size:clamp(26px,3vw,38px);font-weight:700;letter-spacing:-0.02em">About ForzaHelper</h1>
-      <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Forza Horizon 6 launched on 19 May 2026 with more than 550 cars, and the roster keeps growing through Festival Playlist, Car Pass and Aftermarket additions. I try my best to keep the data accurate and up-to-date. But, there may be a slight delay between new car additions and their appearance on ForzaHelper.</p>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+      <p style="margin:14px 0 30px;color:var(--muted);text-wrap:pretty">Hi! I'm Sandeep, though you may know me as waz. I am a passionate motorsports enthusiast and a dedicated fan of the Forza series. I didn't just vibecode Forza Helper for fun. I have my reasons. I take part in the community games over at AR12's Discord server. We do all sorts of fun challenges. Now, I know a decent bit about cars. But, what I don't know is if a certain 90s Japanese shitbox made by Honda has over a 100 horsepower or not. The ingame filters are just a pain to work with. They are functional but very primitive and time consuming. Scrolling through them is a nightmare. So, the next time Beaker posts that we are gonna do a Touge challenge where you have to take a Japanese car under 35K credits, that has to be lightweight and realistic. I can just type that request in Forza Helper's Car Finder feature, and voila, I've got options. I hope you will find this tool useful. Refer the tiles below for information about the data.</p>
+      <div class="fh6-stagger" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
         <sc-for list="{{ trustLevels }}" as="t" hint-placeholder-count="3">
           <div style="padding:20px;background:var(--panel);border:1px solid var(--l2)">
             <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
@@ -684,6 +852,55 @@ class Component extends DCLogic {
       if (atTable !== !!this.state.atTable) this.setState({atTable});
     };
     window.addEventListener("scroll", this._onScroll, {passive: true});
+    this.mountWheel();
+  }
+
+  // A small wheel that trails the mouse pointer and rolls as it travels. Mouse
+  // only: skipped on touch screens and when reduced motion is requested. It is
+  // added to <body> directly and never receives clicks.
+  mountWheel() {
+    try {
+      if (!window.matchMedia || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    } catch (e) { return; }
+    const el = document.createElement("div");
+    el.className = "fh6-wheel";
+    el.setAttribute("aria-hidden", "true");
+    el.innerHTML = '<svg width="28" height="28" viewBox="0 0 28 28">' +
+      '<circle cx="14" cy="14" r="13" fill="#1c1d20" stroke="#55575c" stroke-width="1"/>' +
+      '<circle cx="14" cy="14" r="8.8" fill="#2b2c30" stroke="#d4d6da" stroke-width="1.2"/>' +
+      '<g stroke="#d4d6da" stroke-width="2.2" stroke-linecap="round">' +
+      '<line x1="14" y1="14" x2="14" y2="5.6"/><line x1="14" y1="14" x2="21.99" y2="11.4"/>' +
+      '<line x1="14" y1="14" x2="18.94" y2="20.8"/><line x1="14" y1="14" x2="9.06" y2="20.8"/>' +
+      '<line x1="14" y1="14" x2="6.01" y2="11.4"/></g>' +
+      '<circle cx="14" cy="14" r="2.8" fill="#df4605"/></svg>';
+    document.body.appendChild(el);
+
+    let x = 0, y = 0, tx = 0, ty = 0, angle = 0, seen = false;
+    const place = () => { el.style.transform = "translate3d(" + (x + 14) + "px," + (y + 14) + "px,0) rotate(" + angle + "deg)"; };
+    const onMove = (e) => {
+      if (e.pointerType && e.pointerType !== "mouse") return;
+      tx = e.clientX; ty = e.clientY;
+      // First sighting: start at the pointer, not the corner of the screen.
+      if (!seen) { x = tx; y = ty; seen = true; place(); }
+      el.style.opacity = "1";
+    };
+    const onLeave = () => { el.style.opacity = "0"; };
+    const tick = () => {
+      const dx = (tx - x) * 0.2, dy = (ty - y) * 0.2;
+      if (seen && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
+        x += dx; y += dy;
+        // Rolling: distance travelled over the 14px radius, in degrees, with
+        // the direction taken from horizontal movement.
+        angle += (dx < 0 ? -1 : 1) * Math.hypot(dx, dy) / 14 * 57.3;
+        place();
+      }
+      this._wheelRaf = requestAnimationFrame(tick);
+    };
+    window.addEventListener("pointermove", onMove, {passive: true});
+    document.documentElement.addEventListener("mouseleave", onLeave);
+    this._wheel = {el, onMove, onLeave};
+    this._wheelRaf = requestAnimationFrame(tick);
   }
 
   // Opens the page at the results rather than scrolling there. Two frames, so
@@ -711,6 +928,12 @@ class Component extends DCLogic {
   componentWillUnmount() {
     if (this._onWheel) window.removeEventListener("wheel", this._onWheel);
     if (this._onScroll) window.removeEventListener("scroll", this._onScroll);
+    if (this._wheelRaf) cancelAnimationFrame(this._wheelRaf);
+    if (this._wheel) {
+      window.removeEventListener("pointermove", this._wheel.onMove);
+      document.documentElement.removeEventListener("mouseleave", this._wheel.onLeave);
+      this._wheel.el.remove();
+    }
     clearTimeout(this._qTimer);
   }
 

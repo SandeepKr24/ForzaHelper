@@ -1,15 +1,13 @@
 -- 02_cars_api_view.sql
--- Additive only: creates a view. Does NOT alter public.cars.
+-- additive only: creates a view. Does NOT alter public.cars.
 --
--- Gives the backend snake_case names, a real integer price, a stable text id,
--- and the derived power-to-weight figure from doc section 7, so no application
--- code has to quote "Value (Cr)" or parse comma-grouped strings.
+-- gives the backend snake_case names, integer price, stable text id,
+-- and the derived power-to-weight figures. 
 --
--- Run 01_fix_encoding.sql first, otherwise ids for the 28 affected rows change later.
+-- run 01_fix_encoding.sql first to repair the 28 rows whose accented characters became U+FFFD during the original import.
 
 CREATE OR REPLACE VIEW public.cars_api AS
 SELECT
-    -- Stable, reproducible id derived from the natural key. Verified unique.
     regexp_replace(
         lower("Make" || '-' || "Model" || '-' || "Year"),
         '[^a-z0-9]+', '-', 'g'
@@ -22,7 +20,6 @@ SELECT
     "Country"                                      AS country,
     "Type"                                         AS car_type,
 
-    -- "2,50,000" -> 250000. Indian digit grouping, so strip every comma.
     NULLIF(regexp_replace("Value (Cr)", ',', '', 'g'), '')::bigint
                                                    AS price_cr,
     "Rarity"                                       AS rarity,
@@ -37,7 +34,6 @@ SELECT
     "Weight (Metric)"                              AS weight_kg,
     "Drivetrain"                                   AS drivetrain,
 
-    -- hp per metric tonne (doc section 7). NULL-safe: NULLIF guards divide-by-zero.
     round(
         ("Power (HP)"::numeric / NULLIF("Weight (Imperial)"::numeric / 2204.62, 0)),
         2

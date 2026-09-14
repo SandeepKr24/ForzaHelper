@@ -31,13 +31,6 @@ class ConstraintExtractor(Protocol):
 
     def extract(self, message: str, current: CarFilters) -> CarFilters: ...
 
-
-# --------------------------------------------------------------------------
-# Vocabulary used by the rule-based extractor and by the LLM prompt.
-# Categorical *values* are read from the database at call time, so nothing here
-# hard-codes the set of drivetrains or PI classes (doc section 5).
-# --------------------------------------------------------------------------
-
 _COUNTRY_SYNONYMS = {
     "japanese": "Japan",
     "jdm": "Japan",
@@ -110,8 +103,6 @@ class RuleBasedExtractor:
 
         update: dict[str, object] = {}
 
-        # --- price -------------------------------------------------------
-        # "under 90k", "below 90,000 cr", "less than 1.5m"
         m = re.search(
             r"(?:under|below|less than|cheaper than|max(?:imum)?|up to|within)\s*"
             r"(?:cr\s*)?\$?([\d,.]+)\s*([km])?\b",
@@ -127,9 +118,6 @@ class RuleBasedExtractor:
         if m:
             update["price_cr_min"] = _parse_amount(m.group(1), m.group(2))
 
-        # --- horsepower --------------------------------------------------
-        # "around 450 hp" -> a target, expanded to a range later by the
-        # tolerance policy, never silently treated as equality (doc section 12).
         m = re.search(
             r"(?:around|about|roughly|approx(?:imately)?|near|~)\s*([\d,.]+)\s*"
             r"([km])?\s*(?:hp|horsepower|bhp)",
@@ -247,10 +235,6 @@ class LangChainExtractor:
         self.settings = settings or get_settings()
         self._fallback = RuleBasedExtractor()
         self._model = None
-        # Sampling parameters were removed on newer Claude generations (Sonnet 5,
-        # Opus 4.7+), which reject `temperature` with a 400, while Sonnet 4.6 and
-        # earlier accept it. Rather than hard-code a model list that goes stale,
-        # we send it, and permanently stop sending it if the API objects.
         self._use_temperature = True
 
     def _build_model(self):
@@ -258,8 +242,6 @@ class LangChainExtractor:
 
         kwargs: dict[str, object] = {"max_tokens": self.settings.llm_max_tokens}
         if self._use_temperature:
-            # Constraint extraction should be reproducible: the same message
-            # must always yield the same filters.
             kwargs["temperature"] = 0
         if self.settings.llm_provider:
             kwargs["model_provider"] = self.settings.llm_provider
@@ -269,8 +251,6 @@ class LangChainExtractor:
             kwargs["timeout"] = self.settings.llm_timeout_s
 
         model = init_chat_model(self.settings.llm_model, **kwargs)
-        # Structured output binds the CarFilters schema to the model, so the
-        # response is parsed and validated rather than scraped from prose.
         return model.with_structured_output(CarFilters)
 
     def _get_model(self):
@@ -315,9 +295,6 @@ class LangChainExtractor:
             except Exception as exc:
                 if not (self._use_temperature and self._is_unsupported_sampling_error(exc)):
                     raise
-                # This model generation does not accept sampling parameters.
-                # Drop temperature for the rest of the process and retry once,
-                # rather than falling back and masking a working model.
                 logger.info(
                     "%s rejects temperature; retrying without sampling parameters.",
                     self.settings.llm_model,
@@ -326,8 +303,6 @@ class LangChainExtractor:
                 self._model = self._build_model()
                 result = self._model.invoke(prompt)
 
-            # with_structured_output returns a CarFilters, but re-validate: the
-            # contract is that nothing unvalidated reaches the query builder.
             return CarFilters.model_validate(
                 result if isinstance(result, dict) else result.model_dump()
             )

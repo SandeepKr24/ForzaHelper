@@ -84,11 +84,8 @@ class CarFilters(BaseModel):
     rarity: list[str] | None = None
     acquisition_methods: list[str] | None = None
 
-    # Free-text match on make/model. Passed as a bound parameter, never inlined.
     query: str | None = Field(default=None, max_length=120)
 
-    # If True, rows with a NULL in a filtered column are kept rather than
-    # dropped. Default False: a NULL cannot be shown to satisfy a constraint.
     include_unknown: bool = False
 
     _RANGES = (

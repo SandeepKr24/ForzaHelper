@@ -27,7 +27,6 @@ from .models import (
     Sort,
 )
 
-# Columns exposed by public.cars_api, in the order the API returns them.
 SELECT_COLUMNS = (
     "id",
     "make",
@@ -51,7 +50,6 @@ SELECT_COLUMNS = (
     "price_per_hp",
 )
 
-# filter field -> (column, operator). Nothing outside this map is filterable.
 _RANGE_FILTERS: dict[str, tuple[str, str]] = {
     "year_min": ("year", ">="),
     "year_max": ("year", "<="),
@@ -69,7 +67,6 @@ _RANGE_FILTERS: dict[str, tuple[str, str]] = {
     "hp_per_tonne_max": ("hp_per_tonne", "<="),
 }
 
-# filter field -> column, for case-insensitive membership tests.
 _CATEGORICAL_FILTERS: dict[str, str] = {
     "drivetrain": "drivetrain",
     "pi_class": "pi_class",
@@ -103,18 +100,9 @@ _SORT_COLUMNS: dict[str, str] = {
 
 _LIKE_ESCAPE = "ESCAPE '\\'"
 
-# Accent folding -------------------------------------------------------------
-# Car names carry accents ("Huracan" is stored as "Huracán") and typographic
-# quotes, but nobody types them. Both sides of a text comparison are folded to
-# ASCII so "Huracan" matches "Huracán" and "Coupe" matches "Coupe".
-#
-# The SQL side uses translate() with the characters that actually occur in the
-# data, passed as bound parameters -- this needs no database extension and no
-# migration. The Python side strips any accent the user types, not just these.
 _SQL_FOLD_FROM = "áéÁÉ‘’"
 _SQL_FOLD_TO = "aeAE''"
 
-# Only these columns contain non-ASCII characters in the dataset.
 _ACCENTED_COLUMNS = {"model", "full_name"}
 
 assert len(_SQL_FOLD_FROM) == len(_SQL_FOLD_TO)
@@ -144,8 +132,6 @@ def build_where(filters: CarFilters) -> tuple[list[str], dict[str, Any]]:
     unknown_ok = filters.include_unknown
 
     def add(column: str, condition: str) -> None:
-        # Keeping NULLs requires an explicit opt-in: an unknown value must not
-        # be presented as satisfying a constraint (doc sections 4 and 23).
         clauses.append(f"({column} IS NULL OR {condition})" if unknown_ok else condition)
 
     for field, (column, op) in _RANGE_FILTERS.items():
@@ -159,7 +145,6 @@ def build_where(filters: CarFilters) -> tuple[list[str], dict[str, Any]]:
         if not values:
             continue
         if column in _ACCENTED_COLUMNS:
-            # Fold both sides so a dropdown value and a hand-typed one both hit.
             params[field] = [fold(v).strip().lower() for v in values]
             params.setdefault("fold_from", _SQL_FOLD_FROM)
             params.setdefault("fold_to", _SQL_FOLD_TO)
@@ -172,7 +157,6 @@ def build_where(filters: CarFilters) -> tuple[list[str], dict[str, Any]]:
         params["acquisition_methods"] = [
             v.strip().lower() for v in filters.acquisition_methods
         ]
-        # Overlap test against the text[] column, lowercased element-wise.
         add(
             "acquisition_methods",
             "EXISTS (SELECT 1 FROM unnest(acquisition_methods) AS m"
@@ -207,7 +191,6 @@ def build_order_by(sort: Sort, filters: CarFilters) -> str:
 
     column = _SORT_COLUMNS[sort.field]
     direction = "ASC" if sort.direction == "asc" else "DESC"
-    # NULLS LAST in both directions: unknown values never lead the results.
     return f"{column} {direction} NULLS LAST, id ASC"
 
 
@@ -225,7 +208,7 @@ def build_search_sql(
 ) -> tuple[str, str, dict[str, Any]]:
     """Return (rows_sql, count_sql, params)."""
     settings = settings or get_settings()
-    relation = settings.cars_relation  # fixed identifier from config, not input
+    relation = settings.cars_relation
 
     clauses, params = build_where(request.filters)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
@@ -235,8 +218,6 @@ def build_search_sql(
     params["offset"] = request.offset
 
     columns = ", ".join(SELECT_COLUMNS)
-    # count(*) OVER () returns the total alongside the page, so the page and
-    # its count cost one round trip instead of two.
     rows_sql = (
         f"SELECT {columns}, count(*) OVER () AS _total FROM {relation} {where}"
         f" ORDER BY {build_order_by(request.sort, request.filters)}"
@@ -258,16 +239,11 @@ def search_cars(
     if rows:
         total = int(rows[0]["_total"])
     else:
-        # An empty page carries no window-function row, so the count is only
-        # needed when nothing came back -- and then it is always zero unless
-        # the caller paged past the end.
         total = 0 if not request.offset else int((fetch_one(count_sql, params) or {}).get("total", 0))
     duration_ms = (time.perf_counter() - started) * 1000
 
     results = [CarResult.model_validate(row) for row in rows]
     warnings: list[str] = []
-    # Say so plainly when part of the request names something absent from the
-    # data, rather than returning rows that ignore it.
     warnings.extend(describe_unknown(unknown_filter_values(request.filters, settings)))
     if not request.filters.include_unknown:
         warnings.extend(_null_warnings(request.filters))
@@ -286,8 +262,6 @@ def search_cars(
     )
 
 
-# Columns that may have gaps, checked against the database rather than hardcoded
-# so the warnings stay correct if the dataset changes.
 _NULLABLE_COLUMNS = (
     "year",
     "price_cr",
@@ -338,7 +312,7 @@ def _null_warnings(filters: CarFilters) -> list[str]:
 
     try:
         counts = null_counts()
-    except Exception:  # pragma: no cover - warnings must never fail a search
+    except Exception:
         return []
 
     return [
@@ -365,9 +339,6 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
     settings = settings or get_settings()
     relation = settings.cars_relation
 
-    # One statement, not eleven. The database answers each of these in well
-    # under a millisecond, so the cost was entirely the network round trip per
-    # query -- eleven of them on the page's first load.
     facet_columns = (
         "drivetrain",
         "pi_class",
@@ -440,16 +411,12 @@ def filter_metadata(settings: Settings | None = None) -> dict[str, Any]:
     _filter_metadata_cache = {
         "categorical": categorical,
         "ranges": ranges,
-        # PI class bands are derived, not assumed -- this dataset's bands differ
-        # from retail Forza's, and the query layer must not presume either.
         "pi_class_bands": row.get("pi_class_bands") or [],
         "sortable_fields": ["relevance", *sorted(_SORT_COLUMNS)],
         "null_counts": counts,
     }
     return _filter_metadata_cache
 
-
-# filter field -> (metadata key, how to phrase it when nothing matches)
 _VALIDATED_FIELDS: dict[str, tuple[str, str]] = {
     "country": ("country", "cars from {value}"),
     "make": ("make", "cars made by {value}"),
@@ -474,7 +441,7 @@ def unknown_filter_values(
     """
     try:
         vocabulary = filter_metadata(settings)["categorical"]
-    except Exception:  # pragma: no cover - never fail a search over a warning
+    except Exception:
         return {}
 
     unknown: dict[str, list[str]] = {}
@@ -532,8 +499,6 @@ def _namespaced(
     renamed = {f"{prefix}{k}": v for k, v in params.items()}
     out = []
     for clause in clauses:
-        # Longest first, so one parameter name cannot be rewritten inside
-        # another that happens to start with the same characters.
         for key in sorted(params, key=len, reverse=True):
             clause = clause.replace(f"%({key})s", f"%({prefix}{key})s")
         out.append(clause)

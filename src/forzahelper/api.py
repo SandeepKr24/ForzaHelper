@@ -101,16 +101,11 @@ async def _http_handler(request: Request, exc: HTTPException) -> JSONResponse:
 
 @app.exception_handler(Exception)
 async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
-    # Logged in full server-side; the client gets no internals.
     logger.exception("unhandled error on %s %s", request.method, request.url.path)
     return _error("INTERNAL_ERROR", "An unexpected error occurred.", 500)
 
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-
-
-# ---------------------------------------------------------------- health/meta
-
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
@@ -160,10 +155,6 @@ def filters(
         metadata["categorical"] = categorical
         metadata["scoped_to_make"] = make
     return metadata
-
-
-# ---------------------------------------------------------------------- cars
-
 
 @app.get("/api/cars")
 def list_cars(
@@ -235,9 +226,6 @@ def read_car(car_id: str, settings: SettingsDep) -> CarResult:
 def search(request: SearchRequest, settings: SettingsDep) -> SearchResponse:
     response = search_cars(request, settings)
     if response.total == 0:
-        # Doc section 16: an empty result comes back with labelled alternatives,
-        # never with the original constraints silently loosened. find_relaxations
-        # calls search_cars directly, so this does not recurse.
         from .interpret import find_relaxations
 
         response.relaxed_results = find_relaxations(request.filters, request.sort)
@@ -274,10 +262,6 @@ def compare(request: CompareRequest, settings: SettingsDep) -> dict[str, Any]:
         ],
     }
 
-
-# ---------------------------------------------------------------------- chat
-
-
 def _extractor_dependency(settings: SettingsDep) -> "ConstraintExtractor":
     """Resolved per request so tests can override it without a live model."""
     from .chat.extraction import get_extractor
@@ -295,13 +279,6 @@ def chat_endpoint(
 
     return chat(request, extractor=extractor, settings=settings)
 
-
-# ---------------------------------------------------------------- static site
-#
-# The frontend is served by this app so that both ship as one deployment and
-# share an origin -- which removes CORS from the picture entirely. Mounted last
-# because a mount at "/" matches everything, and the API routes above must win.
-
 def _find_ui_dir() -> Path | None:
     """Locate ui/ without assuming the deployed layout.
 
@@ -310,7 +287,7 @@ def _find_ui_dir() -> Path | None:
     so several candidates are tried rather than one hard-coded path.
     """
     candidates = [
-        Path(__file__).resolve().parents[2] / "ui",  # repo layout: src/forzahelper/
+        Path(__file__).resolve().parents[2] / "ui",
         Path.cwd() / "ui",
         Path(__file__).resolve().parents[1] / "ui",
         Path(__file__).resolve().parents[3] / "ui",
@@ -325,5 +302,5 @@ _UI_DIR = _find_ui_dir()
 if _UI_DIR is not None:
     logger.info("Serving the frontend from %s", _UI_DIR)
     app.mount("/", StaticFiles(directory=_UI_DIR, html=True), name="ui")
-else:  # pragma: no cover - only when the API runs without the frontend
+else:
     logger.warning("No ui/index.html found; serving the API only.")

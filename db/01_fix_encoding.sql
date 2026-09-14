@@ -1,9 +1,7 @@
 -- 01_fix_encoding.sql
--- Repairs 28 rows whose accented characters became U+FFFD during the original import.
--- Replacements were matched unambiguously against "Forza Horizon 6 Car List.xlsx".
--- The corrupted character is matched with LIKE '_' so this file stays valid
--- regardless of the encoding your SQL client pastes it in.
--- Each statement was verified to match exactly one row. Re-running is a no-op.
+-- repairs 28 rows from the original dataset whose accented characters became U+FFFD during the original import.
+-- matched the replacements against "Forza Horizon 6 Car List.xlsx".
+-- each statement matches one row only. no re-running.
 
 BEGIN;
 
@@ -91,7 +89,7 @@ UPDATE public.cars SET "Model" = 'C 63 AMG Coupé Black Series'
 UPDATE public.cars SET "Model" = 'Mégane R26.R'
  WHERE "Year" = 2008 AND "Make" = 'Renault' AND "Model" LIKE 'M_gane R26.R';
 
--- Verify before committing: expect 0.
+
 SELECT count(*) AS still_corrupted
 FROM public.cars
 WHERE "Make" LIKE '%' || chr(65533) || '%'

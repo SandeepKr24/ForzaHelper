@@ -34,8 +34,6 @@ def get_pool(settings: Settings | None = None) -> ConnectionPool:
             kwargs={
                 "row_factory": dict_row,
                 "options": f"-c statement_timeout={settings.statement_timeout_ms}",
-                # Disabled under transaction pooling, where a connection is not
-                # bound to one session and prepared statements break.
                 "prepare_threshold": settings.prepare_threshold,
             },
             open=False,

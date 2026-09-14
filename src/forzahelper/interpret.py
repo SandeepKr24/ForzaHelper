@@ -73,9 +73,6 @@ def _candidates(filters: CarFilters) -> list[_Relaxation]:
     out: list[_Relaxation] = []
 
     if filters.price_cr_max is not None:
-        # Ask the database what the budget would actually have to be, holding
-        # every other constraint. An arbitrary percentage bump is usually either
-        # too small to help or larger than the user needs.
         without_budget = filters.model_copy(update={"price_cr_max": None})
         cheapest = boundary_value("price_cr", "min", without_budget)
         if cheapest is not None and cheapest > filters.price_cr_max:
@@ -166,9 +163,6 @@ def find_relaxations(
     if not candidates:
         return []
 
-    # Two round trips for the whole set, rather than two per candidate. Each
-    # statement costs ~110ms of network and under a millisecond of database
-    # work, so batching is the entire optimisation.
     counts = count_many([c.filters for c in candidates])
     viable = [(c, n) for c, n in zip(candidates, counts) if n > 0][:max_suggestions]
     if not viable:

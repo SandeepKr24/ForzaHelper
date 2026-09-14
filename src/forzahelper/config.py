@@ -32,17 +32,12 @@ class Settings(BaseSettings):
     db_password: str = ""
     database_url: str = ""
 
-    # The view created by db/02_cars_api_view.sql. Never interpolated from user
-    # input -- it is a fixed identifier used to build queries.
     cars_relation: str = "public.cars_api"
 
     pool_min_size: int = 1
     pool_max_size: int = 5
     statement_timeout_ms: int = 10_000
 
-    # Vercel sets VERCEL=1. Each invocation is a short-lived process, so the
-    # pool must not hold connections open, and Supabase's transaction-mode
-    # pooler does not support prepared statements.
     serverless: bool = Field(
         default_factory=lambda: bool(os.environ.get("VERCEL"))
     )
@@ -50,12 +45,9 @@ class Settings(BaseSettings):
     default_limit: int = 50
     max_limit: int = 200
 
-    # "around X" -> +/- this fraction, unless the user gives an explicit range.
     default_tolerance_pct: float = 0.10
     min_tolerance_abs: float = 5.0
 
-    # Dev origins for the static frontend. Production origins come from
-    # FH_ALLOWED_ORIGINS; never widen this to "*" with real origins in play.
     allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
@@ -68,16 +60,12 @@ class Settings(BaseSettings):
     )
     environment: str = "development"
 
-    # Leave llm_model empty to use the deterministic rule-based extractor.
     llm_provider: str = ""
     llm_model: str = ""
     llm_api_key: str = ""
-    # Extraction returns a small JSON object, so this ceiling is generous.
     llm_max_tokens: int = 2048
     llm_timeout_s: float = 20.0
 
-    # The bare key names used by .env, which Vercel also picks up from
-    # .env.example when importing environment variables.
     _BARE_KEYS = ("host", "port", "database", "user", "password")
 
     @model_validator(mode="after")
@@ -95,9 +83,6 @@ class Settings(BaseSettings):
         if ENV_PATH.exists():
             raw.update(dotenv_values(ENV_PATH))
 
-        # Only trusted as a complete set: "user" and "password" are plausible
-        # stray variables, while a bare "host" alongside them is not, so
-        # requiring both means a lone system variable can never leak in.
         bare = {k: os.environ[k] for k in self._BARE_KEYS if os.environ.get(k)}
         if "host" in bare and "password" in bare:
             raw.update(bare)
@@ -153,9 +138,6 @@ class Settings(BaseSettings):
 
     model_config = {
         "env_prefix": "FH_",
-        # FH_-prefixed keys are read from .env as well as the real environment,
-        # so the API key can live in .env next to the database settings. A real
-        # environment variable still takes precedence, for deployment.
         "env_file": ENV_PATH,
         "env_file_encoding": "utf-8",
         "extra": "ignore",
