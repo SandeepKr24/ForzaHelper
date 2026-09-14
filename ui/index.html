@@ -272,6 +272,11 @@
     header > div:last-child button { letter-spacing:0 !important; }
     header [role=group] button { padding-left:8px !important; padding-right:8px !important; }
   }
+  /* About page contact tiles: two across leaves room for a full address on one
+     line (four across broke them mid-word); a phone stacks them. */
+  @media (max-width: 560px) {
+    .fh6-contact { grid-template-columns:minmax(0,1fr) !important; }
+  }
   @media (max-width: 400px) {
     header nav button { font-size:13px !important; }
     header > div:last-child { gap:4px !important; }
@@ -713,6 +718,29 @@
       </div>
       <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Units</h2>
       <p style="margin:0;color:var(--muted);font-size:13px">Imperial(freedom) and metric(normal) are separate columns in my database, not client-side conversions. Just a practical joke lol. The unit switch in the header changes which column is read for torque, weight and power-to-weight in the table, in filters and sliders, and in sorting. Power is always in HP and value always in credits, so those never change. Weight and torque range filters reset when you switch, because their bounds belong to the other unit.</p>
+      <h2 style="margin:38px 0 12px;font-size:18px;font-weight:600">Contact</h2>
+      <div class="fh6-stagger fh6-contact" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        <a href="mailto:sandeep.workmail24@gmail.com" style="display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid var(--l2);color:var(--text);text-decoration:none;transition:border-color .16s ease,transform .16s ease" style-hover="border-color:var(--accent);transform:translateY(-2px)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>
+          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim)">Email</span>
+          <span style="font-size:13px;overflow-wrap:anywhere">sandeep.workmail24@gmail.com</span>
+        </a>
+        <a href="https://github.com/SandeepKr24" target="_blank" rel="noreferrer" style="display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid var(--l2);color:var(--text);text-decoration:none;transition:border-color .16s ease,transform .16s ease" style-hover="border-color:var(--accent);transform:translateY(-2px)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16"/></svg>
+          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim)">GitHub</span>
+          <span style="font-size:13px;overflow-wrap:anywhere">github.com/SandeepKr24</span>
+        </a>
+        <a href="https://www.linkedin.com/in/sandeep-24-au/" target="_blank" rel="noreferrer" style="display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid var(--l2);color:var(--text);text-decoration:none;transition:border-color .16s ease,transform .16s ease" style-hover="border-color:var(--accent);transform:translateY(-2px)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10.5V17M8 7.2v.1M12 17v-6.5M12 13.2c0-1.6 1.1-2.7 2.5-2.7s2.5 1 2.5 2.7V17"/></svg>
+          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim)">LinkedIn</span>
+          <span style="font-size:13px;overflow-wrap:anywhere">linkedin.com/in/sandeep-24-au</span>
+        </a>
+        <a href="https://sandeepkumar24.vercel.app/" target="_blank" rel="noreferrer" style="display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:10px;background:var(--panel);border:1px solid var(--l2);color:var(--text);text-decoration:none;transition:border-color .16s ease,transform .16s ease" style-hover="border-color:var(--accent);transform:translateY(-2px)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+          <span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim)">Portfolio</span>
+          <span style="font-size:13px;overflow-wrap:anywhere">sandeepkumar24.vercel.app</span>
+        </a>
+      </div>
     </main>
   </sc-if>
 </div>
