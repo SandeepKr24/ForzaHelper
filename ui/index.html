@@ -852,19 +852,7 @@ class Component extends DCLogic {
     } catch (e) {}
     this.load();
     this.loadFacets();
-    this._onWheel = (e) => {
-      if (this.state.view !== "explorer" || Math.abs(e.deltaY) < 4) return;
-      const hero = document.getElementById("fh6-hero") || document.querySelector("main > section");
-      if (!hero) return;
-      const now = Date.now();
-      if (this._snapLock && now - this._snapLock < 700) { e.preventDefault(); return; }
-      const doc = document.scrollingElement || document.documentElement;
-      const y = doc.scrollTop;
-      const target = Math.max(0, hero.offsetTop + hero.offsetHeight - 60);
-      if (e.deltaY > 0 && y < target - 4) { e.preventDefault(); this._snapLock = now; doc.scrollTo({top: target, behavior: "smooth"}); }
-      else if (e.deltaY < 0 && y > 4 && y <= target + 4) { e.preventDefault(); this._snapLock = now; doc.scrollTo({top: 0, behavior: "smooth"}); }
-    };
-    window.addEventListener("wheel", this._onWheel, {passive: false});
+    this.mountSmoothScroll();
 
     // Tracks whether the table is in view, which decides the Cars underline.
     // "In view" means the table fills at least half the screen.
@@ -931,17 +919,93 @@ class Component extends DCLogic {
     this._wheelRaf = requestAnimationFrame(tick);
   }
 
-  // Opens the page at the results rather than scrolling there. Two frames, so
-  // the hero has been laid out and its height is final before we measure it.
+  // Smooth wheel scrolling on every page. The wheel moves a target and the page
+  // eases toward it each frame, so scrolling glides and settles instead of
+  // stepping. Only vertical wheel and trackpad input is taken over: zoom
+  // (ctrl+wheel), sideways scrolling, keyboard, the scrollbar and touch all stay
+  // native, and any of them interrupts a glide. Off when reduced motion is set.
+  mountSmoothScroll() {
+    const doc = document.scrollingElement || document.documentElement;
+    let reduce = false;
+    try { reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+    const g = this._glide = {target: 0, pos: 0, lastSet: 0, raf: 0, t: 0, reduce};
+    const maxY = () => Math.max(0, doc.scrollHeight - doc.clientHeight);
+
+    const step = (now) => {
+      // Something else moved the page mid-glide (a browser scroll animation
+      // still finishing): carry on from where the page actually is, keeping the
+      // distance the wheel still asked for.
+      const moved = doc.scrollTop - g.lastSet;
+      if (Math.abs(moved) > 2) { g.pos += moved; g.target = Math.max(0, Math.min(maxY(), g.target + moved)); }
+      const dt = g.t ? Math.min(64, now - g.t) : 16.7;
+      g.t = now;
+      // Covers 14% of the remaining distance per 60fps frame, at any frame rate.
+      g.pos += (g.target - g.pos) * (1 - Math.pow(0.86, dt / 16.7));
+      if (Math.abs(g.target - g.pos) < 0.5) g.pos = g.target;
+      doc.scrollTop = g.pos;
+      g.lastSet = doc.scrollTop;
+      if (g.pos === g.target) { g.raf = 0; return; }
+      g.raf = requestAnimationFrame(step);
+    };
+
+    this.glideTo = (y) => {
+      const to = Math.max(0, Math.min(maxY(), y));
+      if (g.reduce) { doc.scrollTo(0, to); return; }
+      g.target = to;
+      if (!g.raf) {
+        g.pos = g.lastSet = doc.scrollTop;
+        g.t = 0;
+        g.raf = requestAnimationFrame(step);
+      }
+    };
+    this.stopGlide = () => { if (g.raf) cancelAnimationFrame(g.raf); g.raf = 0; };
+    // Keys, grabbing the scrollbar and touch take over at once. Waiting for the
+    // next frame to notice would overwrite, and so cancel, the browser's own
+    // animated scroll (Home, PageDown).
+    this._glideInterrupt = () => this.stopGlide();
+    window.addEventListener("keydown", this._glideInterrupt, true);
+    window.addEventListener("mousedown", this._glideInterrupt, true);
+    window.addEventListener("touchstart", this._glideInterrupt, {capture: true, passive: true});
+
+    this._onWheel = (e) => {
+      if (g.reduce || e.ctrlKey || e.defaultPrevented) return;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      // An inner area that can still scroll that way keeps the wheel.
+      for (let el = e.target; el && el.nodeType === 1 && el !== document.body; el = el.parentElement) {
+        if (!/(auto|scroll)/.test(getComputedStyle(el).overflowY) || el.scrollHeight <= el.clientHeight + 1) continue;
+        if (e.deltaY < 0 ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1) return;
+      }
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16;
+      else if (e.deltaMode === 2) dy *= doc.clientHeight;
+      e.preventDefault();
+
+      const base = g.raf ? g.target : doc.scrollTop;
+      let next = base + dy;
+      // Explorer: between the hero and the table, any wheel movement glides
+      // the whole way. Further wheel input keeps going; nothing is locked.
+      const hero = this.state.view === "explorer" && document.getElementById("fh6-hero");
+      if (hero) {
+        const tableTop = Math.max(0, hero.offsetTop + hero.offsetHeight - 60);
+        if (dy > 0 && base < tableTop - 4) next = tableTop;
+        else if (dy < 0 && base > 4 && base <= tableTop + 4) next = 0;
+      }
+      this.glideTo(next);
+    };
+    window.addEventListener("wheel", this._onWheel, {passive: false});
+  }
+
+  // Brings the results into view. Two frames, so the hero has been laid out and
+  // its height is final before it is measured.
   jumpToTable(behavior = "auto") {
     if (typeof requestAnimationFrame !== "function") return;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const hero = document.getElementById("fh6-hero");
       const doc = document.scrollingElement || document.documentElement;
       if (!hero || !doc) return;
-      // Keep the wheel-snap handler from bouncing us straight back up.
-      this._snapLock = Date.now();
-      doc.scrollTo({top: Math.max(0, hero.offsetTop + hero.offsetHeight - 60), behavior});
+      const top = Math.max(0, hero.offsetTop + hero.offsetHeight - 60);
+      if (behavior === "smooth" && this.glideTo) this.glideTo(top);
+      else { if (this.stopGlide) this.stopGlide(); doc.scrollTo({top, behavior: "auto"}); }
     }));
   }
 
@@ -957,6 +1021,12 @@ class Component extends DCLogic {
     if (this._onWheel) window.removeEventListener("wheel", this._onWheel);
     if (this._onScroll) window.removeEventListener("scroll", this._onScroll);
     if (this._wheelRaf) cancelAnimationFrame(this._wheelRaf);
+    if (this.stopGlide) this.stopGlide();
+    if (this._glideInterrupt) {
+      window.removeEventListener("keydown", this._glideInterrupt, true);
+      window.removeEventListener("mousedown", this._glideInterrupt, true);
+      window.removeEventListener("touchstart", this._glideInterrupt, true);
+    }
     if (this._wheel) {
       window.removeEventListener("pointermove", this._wheel.onMove);
       document.documentElement.removeEventListener("mouseleave", this._wheel.onLeave);
@@ -1223,11 +1293,7 @@ class Component extends DCLogic {
           : Object.assign({}, EMPTY_F, {q: q}));
       });
     }
-    const hero = document.getElementById("fh6-hero");
-    const doc = document.scrollingElement || document.documentElement;
-    if (!hero || !doc) return;
-    this._snapLock = Date.now();
-    doc.scrollTo({top: Math.max(0, hero.offsetTop + hero.offsetHeight - 60), behavior: "smooth"});
+    this.jumpToTable("smooth");
   };
 
   setUnits = (units) => {
@@ -1237,8 +1303,12 @@ class Component extends DCLogic {
     try { localStorage.setItem("fh6-units", units); } catch (e) {}
   };
 
-  go = (view) => this.setState({view, detailId: view === "detail" ? this.state.detailId : null},
-    () => { if (this._onScroll) this._onScroll(); });
+  go = (view) => {
+    // A glide started on the previous page must not carry over to the next.
+    if (this.stopGlide) this.stopGlide();
+    this.setState({view, detailId: view === "detail" ? this.state.detailId : null},
+      () => { if (this._onScroll) this._onScroll(); });
+  };
   openCar = (id) => this.setState({view: "detail", detailId: id});
   toggleCompare = (id) => {
     const c = this.state.compare.includes(id) ? this.state.compare.filter(x => x !== id) : this.state.compare.concat([id]).slice(-4);
