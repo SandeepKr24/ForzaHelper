@@ -11,9 +11,11 @@ The only string interpolation into SQL is of literals defined in this module.
 
 from __future__ import annotations
 
+import re
 import time
 import unicodedata
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from typing import Any
 
 from .config import Settings, get_settings
@@ -296,9 +298,10 @@ def null_counts(settings: Settings | None = None) -> dict[str, int]:
 
 def reset_caches() -> None:
     """Drop cached dataset facts. Call after the underlying data changes."""
-    global _null_counts_cache, _filter_metadata_cache
+    global _null_counts_cache, _filter_metadata_cache, _suggest_names_cache
     _null_counts_cache = None
     _filter_metadata_cache = None
+    _suggest_names_cache = None
 
 
 def _null_warnings(filters: CarFilters) -> list[str]:
@@ -597,6 +600,82 @@ def boundary_value(
         params,
     )
     return row["value"] if row else None
+
+
+_suggest_names_cache: list[dict[str, Any]] | None = None
+
+# Below this, a match is more likely noise than a misspelling.
+SUGGEST_MIN_SCORE = 0.6
+
+
+def _suggest_norm(value: str) -> list[str]:
+    """Lowercase, accent-free words: "Huracán STO" -> ["huracan", "sto"]."""
+    return re.sub(r"[^a-z0-9]+", " ", fold(value).lower()).split()
+
+
+def _word_score(typed: str, word: str) -> float:
+    """How well one typed word matches one word of a car name, from 0 to 1."""
+    if word.startswith(typed):
+        return 1.0
+    ratio = SequenceMatcher(None, typed, word).ratio()
+    if len(word) > len(typed):
+        # Half-typed and misspelled, e.g. "lambo" or "lamborg" against "lamborghini".
+        ratio = max(ratio, SequenceMatcher(None, typed, word[: len(typed)]).ratio())
+    return ratio
+
+
+def name_score(query: str, name: str) -> float:
+    """Typo-tolerant similarity between what was typed and a car name."""
+    typed, words = _suggest_norm(query), _suggest_norm(name)
+    if not typed or not words:
+        return 0.0
+    joined_typed, joined_name = "".join(typed), "".join(words)
+    # "rx7" or "gtr" typed without the hyphen or space the name has.
+    if len(joined_typed) >= 3 and joined_typed in joined_name:
+        return 1.0
+    per_word = sum(max(_word_score(t, w) for w in words) for t in typed) / len(typed)
+    whole = SequenceMatcher(None, " ".join(typed), " ".join(words)).ratio()
+    return max(per_word, whole)
+
+
+def rank_suggestions(
+    query: str, candidates: list[dict[str, Any]], limit: int = 2
+) -> list[dict[str, Any]]:
+    """The best-matching cars for a possibly misspelled query.
+
+    Ties go to the shorter name, so a base model comes before its variants, and
+    then to the newer car. Duplicate display names are shown once.
+    """
+    scored = []
+    for car in candidates:
+        name = f"{car['make']} {car['model']}"
+        score = name_score(query, name)
+        if score >= SUGGEST_MIN_SCORE:
+            scored.append((score, name, car))
+    scored.sort(key=lambda s: (-s[0], len(s[1]), -(s[2].get("year") or 0)))
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for score, name, car in scored:
+        if name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        out.append({**car, "name": name, "score": round(score, 3)})
+        if len(out) == limit:
+            break
+    return out
+
+
+def suggest_cars(query: str, limit: int = 2, settings: Settings | None = None) -> list[dict[str, Any]]:
+    """Car names close to what was typed, for the table search's suggestions."""
+    global _suggest_names_cache
+    settings = settings or get_settings()
+    if _suggest_names_cache is None:
+        _suggest_names_cache = fetch_all(
+            f"SELECT id, make, model, year, car_type FROM {settings.cars_relation}"
+            f" WHERE make IS NOT NULL AND model IS NOT NULL"
+        )
+    return rank_suggestions(query, _suggest_names_cache, limit)
 
 
 def get_car(car_id: str, settings: Settings | None = None) -> CarResult | None:

@@ -276,6 +276,9 @@
      line (four across broke them mid-word); a phone stacks them. */
   @media (max-width: 560px) {
     .fh6-contact { grid-template-columns:minmax(0,1fr) !important; }
+    /* The search box shares its row with Filters on a phone, so a suggestion's
+       year and type go under the name rather than squeezing in beside it. */
+    #fh6-suggest [role="option"] { flex-direction:column !important; align-items:flex-start !important; gap:2px !important; }
   }
   @media (max-width: 400px) {
     header nav button { font-size:13px !important; }
@@ -345,11 +348,23 @@
 
       <div style="min-height:calc(100vh - 60px);display:flex;flex-direction:column">
       <section style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;padding:20px 0">
-        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px;padding:0 14px;background:var(--input);border:1px solid var(--l3)">
+        <div style="position:relative;display:flex;align-items:center;gap:10px;flex:1;min-width:240px;padding:0 14px;background:var(--input);border:1px solid var(--l3)">
           <span style="font-family:'Montserrat Alternates',Helvetica,Arial,sans-serif;font-size:13px;color:var(--faint2)">⌕</span>
-          <input value="{{ tableQuery }}" onChange="{{ onTableQuery }}" onKeyDown="{{ onTableQueryKey }}" placeholder="Search make, model or car type" style="flex:1;min-width:0;padding:11px 0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none" />
+          <input value="{{ tableQuery }}" onChange="{{ onTableQuery }}" onKeyDown="{{ onTableQueryKey }}" onFocus="{{ onTableQueryFocus }}" onBlur="{{ onTableQueryBlur }}" role="combobox" aria-autocomplete="list" aria-expanded="{{ suggestOpen }}" aria-controls="fh6-suggest" placeholder="Search make, model or car type" style="flex:1;min-width:0;padding:11px 0;background:transparent;border:0;color:var(--text);font-size:14px;outline:none" />
           <sc-if value="{{ hasTableQuery }}" hint-placeholder-val="{{ false }}">
             <button class="fh6-flat" onClick="{{ clearTableQuery }}" aria-label="Clear search" style="background:transparent;border:0;color:var(--dim);font-size:14px;cursor:pointer;padding:0" style-hover="color:var(--ink)">×</button>
+          </sc-if>
+          <!-- Typo-tolerant suggestions, two at most, from GET /api/cars/suggest. -->
+          <sc-if value="{{ suggestOpen }}" hint-placeholder-val="{{ false }}">
+            <div id="fh6-suggest" role="listbox" aria-label="Suggested cars" style="position:absolute;left:-1px;right:-1px;top:calc(100% + 6px);z-index:40;padding:6px;background:var(--panel);border:1px solid var(--l3);border-radius:10px;box-shadow:0 14px 30px -12px var(--btnDrop);animation:fh6in .16s ease both">
+              <div style="padding:4px 10px 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim2)">Suggestions</div>
+              <sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="2">
+                <div role="option" id="{{ sg.domId }}" aria-selected="{{ sg.selected }}" onMouseDown="{{ sg.pick }}" onMouseEnter="{{ sg.hover }}" style="{{ sg.style }}">
+                  <span style="font-size:14px;color:var(--ink)">{{ sg.name }}</span>
+                  <span style="font-size:11px;color:var(--dim)">{{ sg.meta }}</span>
+                </div>
+              </sc-for>
+            </div>
           </sc-if>
         </div>
         <button onClick="{{ toggleFilters }}" style="{{ filterBtnStyle }}" style-hover="border-color:var(--l4);color:var(--ink)">
@@ -815,6 +830,7 @@ class Component extends DCLogic {
     sqlOpen: false, copied: false, theme: "dark",
     facets: {make:[], model:[], type:[], country:[], rarity:[], dt:[]},
     bounds: {pi: [100, 999]}, filtersOpen: false, qDraft: "", units: "imperial",
+    suggestions: [], suggestOpen: false, suggestIndex: -1,
     f: Object.assign({}, EMPTY_F)
   };
 
@@ -1017,7 +1033,39 @@ class Component extends DCLogic {
     this.setState({view: "explorer", detailId: null, atTable: true}, () => this.jumpToTable(already ? "smooth" : "auto"));
   };
 
+  // Suggestions for the table search, for anyone unsure of the spelling: a
+  // short pause after typing, then the two closest car names from the backend.
+  // Replies that arrive after newer typing are dropped.
+  requestSuggestions(text) {
+    clearTimeout(this._sgTimer);
+    const q = String(text || "").trim();
+    if (q.length < 2) {
+      this._sgToken = (this._sgToken || 0) + 1;
+      this.setState({suggestions: [], suggestOpen: false, suggestIndex: -1});
+      return;
+    }
+    this._sgTimer = setTimeout(() => {
+      const token = this._sgToken = (this._sgToken || 0) + 1;
+      this.api("/api/cars/suggest?q=" + encodeURIComponent(q) + "&limit=2").then(res => {
+        if (token !== this._sgToken) return;
+        const list = res.ok && res.data ? res.data.suggestions || [] : [];
+        // Nothing to suggest when the text already is the only match.
+        const exact = list.length === 1 && list[0].name.toLowerCase() === q.toLowerCase();
+        this.setState({suggestions: list, suggestOpen: list.length > 0 && !exact, suggestIndex: -1});
+      });
+    }, 150);
+  }
+
+  pickSuggestion(name) {
+    clearTimeout(this._qTimer);
+    clearTimeout(this._sgTimer);
+    this._sgToken = (this._sgToken || 0) + 1;
+    this.setState({suggestions: [], suggestOpen: false, suggestIndex: -1});
+    this.setF({q: name});
+  }
+
   componentWillUnmount() {
+    clearTimeout(this._sgTimer);
     if (this._onWheel) window.removeEventListener("wheel", this._onWheel);
     if (this._onScroll) window.removeEventListener("scroll", this._onScroll);
     if (this._wheelRaf) cancelAnimationFrame(this._wheelRaf);
@@ -1629,9 +1677,44 @@ class Component extends DCLogic {
         this.setState({qDraft: v});
         clearTimeout(this._qTimer);
         this._qTimer = setTimeout(() => this.setF({q: v.trim()}), 350);
+        this.requestSuggestions(v);
       },
-      onTableQueryKey: (e) => { if (e.key === "Enter") { clearTimeout(this._qTimer); this.setF({q: s.qDraft.trim()}); } },
-      clearTableQuery: () => { clearTimeout(this._qTimer); this.setF({q: ""}); },
+      onTableQueryKey: (e) => {
+        const list = s.suggestOpen ? s.suggestions : [];
+        if (list.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+          e.preventDefault();
+          const n = list.length, i = s.suggestIndex;
+          this.setState({suggestIndex: e.key === "ArrowDown" ? (i + 1) % n : (i <= 0 ? n - 1 : i - 1)});
+          return;
+        }
+        if (e.key === "Escape" && s.suggestOpen) { this.setState({suggestOpen: false, suggestIndex: -1}); return; }
+        if (e.key === "Enter") {
+          if (list.length && s.suggestIndex >= 0) { e.preventDefault(); this.pickSuggestion(list[s.suggestIndex].name); return; }
+          clearTimeout(this._qTimer);
+          this.setF({q: s.qDraft.trim()});
+          this.setState({suggestOpen: false, suggestIndex: -1});
+        }
+      },
+      onTableQueryFocus: () => { if (s.suggestions.length && s.qDraft.trim().length >= 2) this.setState({suggestOpen: true}); },
+      onTableQueryBlur: () => this.setState({suggestOpen: false, suggestIndex: -1}),
+      clearTableQuery: () => {
+        clearTimeout(this._qTimer);
+        this.requestSuggestions("");
+        this.setF({q: ""});
+      },
+      suggestOpen: !!(s.suggestOpen && s.suggestions.length),
+      suggestions: s.suggestions.map((sg, i) => ({
+        name: sg.name,
+        meta: [sg.year, sg.car_type].filter(Boolean).join(" · "),
+        domId: "fh6-suggest-" + i,
+        selected: String(i === s.suggestIndex),
+        // mousedown rather than click: the input keeps focus, so its blur does
+        // not close the list before the pick lands.
+        pick: (e) => { if (e && e.preventDefault) e.preventDefault(); this.pickSuggestion(sg.name); },
+        hover: () => { if (s.suggestIndex !== i) this.setState({suggestIndex: i}); },
+        style: "display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 10px;border-radius:7px;cursor:pointer;background:" +
+          (i === s.suggestIndex ? "var(--hover)" : "transparent"),
+      })),
 
       filtersOpen: s.filtersOpen,
       toggleFilters: () => this.setState({filtersOpen: !s.filtersOpen}),

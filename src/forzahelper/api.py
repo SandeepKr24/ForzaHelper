@@ -38,6 +38,7 @@ from .search import (
     get_car,
     models_for_make,
     search_cars,
+    suggest_cars,
 )
 
 if TYPE_CHECKING:
@@ -212,6 +213,19 @@ def list_cars(
         "pagination": {"page": page, "limit": limit, "total": response.total},
         "warnings": response.warnings,
     }
+
+
+@app.get("/api/cars/suggest")
+def suggest(
+    q: Annotated[str, Query(min_length=1, max_length=80)],
+    settings: SettingsDep,
+    limit: Annotated[int, Query(ge=1, le=5)] = 2,
+) -> dict[str, Any]:
+    """Typo-tolerant car name suggestions for the table search.
+
+    Declared before /api/cars/{car_id} so "suggest" is not read as a car id.
+    """
+    return {"query": q, "suggestions": suggest_cars(q, limit, settings)}
 
 
 @app.get("/api/cars/{car_id}", response_model=CarResult)
